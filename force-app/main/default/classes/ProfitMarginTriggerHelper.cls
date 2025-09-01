@@ -48,7 +48,7 @@ public with sharing class ProfitMarginTriggerHelper {
                 }
                 relatedProfitMarginsMap.get(iProfitMargin.Product__c).add(iProfitMargin);
             }
-            else if (iProfitMArgin.ProductHierarchy__c!=null){
+            else if (iProfitMargin.ProductHierarchy__c!=null){
                 if (!relatedProfitMarginsMap.containsKey(iProfitMargin.ProductHierarchy__c)){
                     relatedProfitMarginsMap.put(iProfitMargin.ProductHierarchy__c,new ProfitMargin__c[]{});
                 }
