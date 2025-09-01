@@ -6,9 +6,9 @@ public with sharing class OrderItemTriggerHelper {
         Map<Id,Map<String,SObject[]>> relatedProductsMap = new Map<Id,Map<String,SObject[]>>(); //Map that relates products to
                                                                                                 //Shipping, PriceBooks, Tax and
                                                                                                 //Margin
-        //Id[] relatedHierarchy = new Id[]{}; //adicionar cheque aos SELECTS para tambem checar as hierarquias relacionadas!
+        Id[] relatedHierarchy = new Id[]{}; //adicionar cheque aos SELECTS para tambem checar as hierarquias relacionadas!
         for (OrderItem iOrderItem:newOrderItems){
-            //relatedHierarchy.add(iOrderItem.Product2Id.ProductHierarchy__c); //perguntar como fazer isso funcionar!
+            relatedHierarchy.add(iOrderItem.Product2.ProductHierarchy__c); 
             relatedProducts.add(iOrderItem.Product2Id);
             relatedProductsMap.put(iOrderItem.Product2Id,new Map<String,SObject[]>());
             relatedProductsMap.get(iOrderItem.Product2Id).put('PricebookEntry',new PricebookEntry[]{});
@@ -16,7 +16,6 @@ public with sharing class OrderItemTriggerHelper {
             relatedProductsMap.get(iOrderItem.Product2Id).put('Tax',new Tax__c[]{});
             relatedProductsMap.get(iOrderItem.Product2Id).put('Margin',new ProfitMargin__c[]{});
         }
-
         //precisa pegar valor de custo de producao (pricebookentry) frete, imposto e margem!
         //vv custo de produção
         PricebookEntry[] relatedPricebooks = [SELECT UnitPrice,Product2Id FROM PricebookEntry 
@@ -27,7 +26,7 @@ public with sharing class OrderItemTriggerHelper {
         }
        
         //vv Frete
-        Shipping__c[] relatedShippings = [SELECT Value__c,Product__c FROM Shipping__c WHERE Product__c IN :relatedProducts AND Status__c = 'Aprovado'];
+        Shipping__c[] relatedShippings = [SELECT Value__c,Product__c FROM Shipping__c WHERE (Product__c IN :relatedProducts OR ProductHierarchy__c IN :relatedHierarchy) AND Status__c = 'Aprovado'];
         for (Shipping__c iShipping:relatedShippings){
             relatedProductsMap.get(iShipping.Product__c).get('Shipping').add(iShipping);
         }
@@ -38,7 +37,7 @@ public with sharing class OrderItemTriggerHelper {
         }
 
         //vv Margem
-        ProfitMargin__c[] relatedMargins =[SELECT MarginPercentage__c,Product__c FROM ProfitMargin__c WHERE Product__c IN :relatedProducts AND Status__c = 'Aprovado'];
+        ProfitMargin__c[] relatedMargins =[SELECT MarginPercentage__c,Product__c FROM ProfitMargin__c WHERE (Product__c IN :relatedProducts OR ProductHierarchy__c IN :relatedHierarchy) AND Status__c = 'Aprovado'];
         
         for (ProfitMargin__c iProfitMargin:relatedMargins){
             relatedProductsMap.get(iProfitMargin.Product__c).get('Margin').add(iProfitMargin);

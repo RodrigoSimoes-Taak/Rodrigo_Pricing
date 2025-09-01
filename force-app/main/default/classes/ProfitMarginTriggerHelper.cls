@@ -58,21 +58,21 @@ public with sharing class ProfitMarginTriggerHelper {
         }
 
         for (ProfitMargin__c iProfitMargin:newProfitMargins){ //checks to see if there's a duplicate margin
-            if (iProfitMargin.Product__c != null){
+            if (iProfitMargin.Product__c != null) {
                 if (relatedProfitMarginsMap.containsKey(iProfitMargin.Product__c)){
-                    for (ProfitMargin__c iRelatedProfitMargin:relatedProfitMarginsMap.get(iProfitMargin.Product__c)){
-                        if (iProfitMargin.Account__c == iRelatedProfitMargin.Account__c && 
+                    for (ProfitMargin__c iRelatedProfitMargin:relatedProfitMarginsMap.get(iProfitMargin.Product__c)) {
+                        if (iProfitMargin.Account__c  == iRelatedProfitMargin.Account__c && 
                         iProfitMargin.AccountGroup__c == iRelatedProfitMargin.AccountGroup__c &&
-                        iProfitMargin.City__c == iRelatedProfitMargin.City__c &&
-                        iProfitMargin.State__c == iRelatedProfitMargin.State__c &&
-                        iProfitMargin.Country__c == iRelatedProfitMargin.Country__c){
+                        iProfitMargin.City__c         == iRelatedProfitMargin.City__c &&
+                        iProfitMargin.State__c        == iRelatedProfitMargin.State__c &&
+                        iProfitMargin.Country__c      == iRelatedProfitMargin.Country__c) {
                             iProfitMargin.addError('Duplicata Detectada');
                             break;
                         }
                     }
                 }
             }
-            else if (iProfitMargin.ProductHierarchy__c != null){
+            else if (iProfitMargin.ProductHierarchy__c != null) {
                 if (relatedProfitMarginsMap.containsKey(iProfitMargin.ProductHierarchy__c)){
                     for (ProfitMargin__c iRelatedProfitMargin:relatedProfitMarginsMap.get(iProfitMargin.ProductHierarchy__c)){
                         if (iProfitMargin.Account__c == iRelatedProfitMargin.Account__c && 
@@ -87,7 +87,5 @@ public with sharing class ProfitMarginTriggerHelper {
                 }
             }
         }
-
-
    }
 }
