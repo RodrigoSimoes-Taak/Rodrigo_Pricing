@@ -1,0 +1,15 @@
+trigger OrderItemTrigger on OrderItem (before insert) {
+    System.debug('OrderItem Trigger => (' + Trigger.operationType + ')');
+    OrderItemTriggerHandler handler = new OrderItemTriggerHandler(Trigger.old, Trigger.new,
+        Trigger.oldMap, Trigger.newMap);
+    if (OrderItemTriggerHandler.isTriggerEnabled()){
+        switch on Trigger.operationType {
+            when BEFORE_INSERT {
+                handler.beforeInsert();
+            }
+            
+
+        }
+
+    }
+}
