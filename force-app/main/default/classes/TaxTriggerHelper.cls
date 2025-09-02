@@ -3,34 +3,43 @@ public with sharing class TaxTriggerHelper {
         
         Id[] relatedProduct = new Id[]{};
         Id[] relatedState = new Id[]{};
-        for (Tax__c iTax:newTaxes){
+        Map<String,Tax__c> mapComparison = new Map<String,Tax__c>();
+        for (Tax__c iTax:newTaxes){ //inner duplicate check
+            String key = iTax.Product__c +'-'+iTax.State__c;
             relatedProduct.add(iTax.Product__c);
             relatedState.add(iTax.State__c);
-        }
-        Tax__c[] relatedTaxes = [SELECT Product__c,State__c
-        FROM Tax__c 
-        WHERE Product__c IN :relatedProduct AND
-        State__c IN :relatedState ];
-        Map<Id,Tax__c[]> relatedTaxesMap = new Map<Id,Tax__c[]>();
-        for (Tax__c iTax:relatedTaxes){ //creates a map that relates taxes to products
-            
-            if (!relatedTaxesMap.containsKey(iTax.Product__c)){
-                relatedTaxesMap.put(iTax.Product__c,new Tax__c[]{});
+            if (!mapComparison.containsKey(key)){
+                mapComparison.put(key,iTax);
             }
-            relatedTaxesMap.get(iTax.Product__c).add(iTax);
-            
-            
-        }
-        for (Tax__c iTax:newTaxes){ //checks to see if there's a duplicate tax
-            
-            if (relatedTaxesMap.containsKey(iTax.Product__c)){
-                for (Tax__c iRelatedTax:relatedTaxesMap.get(iTax.Product__c)){
-                   if (iTax.State__c == iRelatedTax.State__c){
-                        iTax.addError('Duplicata Detectada');
-                        break;
-                    }
-                }
+            else{
+                mapComparison.get(key).addError('Duplicata Detectada');
             }
+        }
+        
+
+        for (Tax__c iTax:[SELECT Product__c,State__c FROM Tax__c WHERE Product__c IN :relatedProduct AND State__c IN :relatedState]){
+            String key = iTax.Product__c +'-'+iTax.State__c;
+            if (!mapComparison.containsKey(key)){
+                mapComparison.put(key,iTax);
+            }
+            else{
+                mapComparison.get(key).addError('Duplicata Detectada');
+            }
+        }
+    }
+    public static void handleUpdateTax(Map<Id,Tax__c> newRecordMap, Map<Id,Tax__c> oldRecordMap){
+        Tax__c[] toCheck = new Tax__C[]{};
+        Id[] relatedProduct = new Id[]{};
+        for (Id iId:newRecordMap.keySet()){
+            if (newRecordMap.get(iId).Product__c != oldRecordMap.get(iId).Product__c ||
+            newRecordMap.get(iId).State__c != oldRecordMap.get(iId).State__c){
+                relatedProduct.add(newRecordMap.get(iId).Product__c);
+                toCheck.add(newRecordMap.get(iId));
+            }
+        }
+        //[SELECT FROM OrderItem WHERE Product2Id IN: relatedProduct]; //mandar dar update nos orderitem que teriam seu valor modificado por taxes
+        if (!toCheck.isEmpty()){
+            handleInsertTax(toCheck);
         }
     }
 }

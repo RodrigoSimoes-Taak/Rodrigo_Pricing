@@ -5,6 +5,7 @@ public with sharing class ShippingTriggerHelper {
         Id[] relatedCity = new Id[]{};
         Id[] relatedState = new Id[]{};
         Id[] relatedCountry = new Id[]{};
+        Map<String,Shipping__c> mapComparison = new Map<String,Shipping__c>();
         for (Shipping__c iShipping:newShippings){
             if (iShipping.ProductHierarchy__c != null){
                 relatedProductHierarchy.add(iShipping.ProductHierarchy__c);
@@ -21,52 +22,48 @@ public with sharing class ShippingTriggerHelper {
             if (iShipping.Country__c != null){
                 relatedCountry.add(iShipping.Country__c);
             }
+            String key = iShipping.ProductHierarchy__c +'-'+iShipping.Product__c +'-'+iShipping.Country__c +'-'+iShipping.State__c +'-'+iShipping.City__c;
+            if (!mapComparison.containsKey(key)){
+                mapComparison.put(key,iShipping);
+            }
+            else{
+                mapComparison.get(key).addError('Duplicata Detectada');
+            }
         }
         Shipping__c[] relatedShippings = [SELECT ProductHierarchy__c,Product__c,City__c,State__c,Country__c
         FROM Shipping__c 
         WHERE (ProductHierarchy__c IN :relatedProductHierarchy OR Product__c IN :relatedProduct) AND
         (City__c IN :relatedCity OR State__c IN :relatedState OR Country__c IN :relatedCountry)];
-        Map<Id,Shipping__c[]> relatedShippingsMap = new Map<Id,Shipping__c[]>();
-        for (Shipping__c iShipping:relatedShippings){ //creates a map that relates shipping to products/hierarchies
-            if (iShipping.Product__c!= null){
-                if (!relatedShippingsMap.containsKey(iShipping.Product__c)){
-                    relatedShippingsMap.put(iShipping.Product__c,new Shipping__c[]{});
-                }
-                relatedShippingsMap.get(iShipping.Product__c).add(iShipping);
+        for (Shipping__c iShipping:relatedShippings){
+            String key = iShipping.ProductHierarchy__c +'-'+iShipping.Product__c +'-'+iShipping.Country__c +'-'+iShipping.State__c +'-'+iShipping.City__c;
+            if (!mapComparison.containsKey(key)){
+                mapComparison.put(key,iShipping);
             }
-            else if (iShipping.ProductHierarchy__c!=null){
-                if (!relatedShippingsMap.containsKey(iShipping.ProductHierarchy__c)){
-                    relatedShippingsMap.put(iShipping.ProductHierarchy__c,new Shipping__c[]{});
-                }
-                relatedShippingsMap.get(iShipping.ProductHierarchy__c).add(iShipping);
+            else{
+                mapComparison.get(key).addError('Duplicata Detectada');
             }
-            
+ 
         }
-        for (Shipping__c iShipping:newShippings){ //checks to see if there's a duplicate shipping
-            if (iShipping.Product__c != null){
-                if (relatedShippingsMap.containsKey(iShipping.Product__c)){
-                    for (Shipping__c iRelatedShipping:relatedShippingsMap.get(iShipping.Product__c)){
-                        if (iShipping.City__c == iRelatedShipping.City__c &&
-                        iShipping.State__c == iRelatedShipping.State__c &&
-                        iShipping.Country__c == iRelatedShipping.Country__c){
-                            iShipping.addError('Duplicata Detectada');
-                            break;
-                        }
-                    }
-                }
-            }
-            else if (iShipping.ProductHierarchy__c != null){
-                if (relatedShippingsMap.containsKey(iShipping.ProductHierarchy__c)){
-                    for (Shipping__c iRelatedShipping:relatedShippingsMap.get(iShipping.ProductHierarchy__c)){
-                        if (iShipping.City__c == iRelatedShipping.City__c &&
-                        iShipping.State__c == iRelatedShipping.State__c &&
-                        iShipping.Country__c == iRelatedShipping.Country__c){
-                            iShipping.addError('Duplicata Detectada');
-                            break;
-                        }
-                    }
-                }
+    }
+    public static void handleUpdateShipping(Map<Id,Shipping__c> newRecordMap, Map<Id,Shipping__c> oldRecordMap){
+        Shipping__c[] toCheck = new Shipping__c[]{};
+
+
+        for (Id iId:newRecordMap.keySet()){
+            if (newRecordMap.get(iId).Product__c != oldRecordMap.get(iId).Product__c ||
+            newRecordMap.get(iId).ProductHierarchy__c != oldRecordMap.get(iId).ProductHierarchy__c ||
+            newRecordMap.get(iId).City__c != oldRecordMap.get(iId).City__c ||
+            newRecordMap.get(iId).State__c != oldRecordMap.get(iId).State__c ||
+            newRecordMap.get(iId).Country__c != oldRecordMap.get(iId).Country__c){
+
+                toCheck.add(newRecordMap.get(iId));
             }
         }
+
+        if (!toCheck.isEmpty()){
+            handleInsertShipping(toCheck);
+        }
+
+
     }
 }

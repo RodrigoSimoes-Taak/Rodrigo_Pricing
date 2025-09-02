@@ -31,6 +31,6 @@ public with sharing class ShippingTriggerHandler {
 		ShippingTriggerHelper.handleInsertShipping(this.newRecordList);
 	}
 	public void beforeUpdate() {
-        ShippingTriggerHelper.handleInsertShipping(this.newRecordList);
+        ShippingTriggerHelper.handleUpdateShipping(this.newRecordMap,this.oldRecordMap);
 	}
 }

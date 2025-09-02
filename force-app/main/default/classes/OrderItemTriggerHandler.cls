@@ -28,8 +28,16 @@ public with sharing class OrderItemTriggerHandler {
 		this.newRecordMap = newRecordMap;
 	}
 	public void beforeInsert() {
+		List<OrderItem> updatedRecordList = new List<OrderItem>();
 		OrderItemTriggerHelper.handleInsertOrderItem(this.newRecordList);
-		//vv funcao para selecionar a margem mais especifica!
-		OrderItemTriggerHelper.handleProfitMargin(this.newRecordList);
+		for (OrderItem iOrderItem : this.newRecordList){
+			if (!iOrderItem.hasErrors()){
+				updatedRecordList.add(iOrderItem);
+			}
+		}
+		OrderItemTriggerHelper.handleTax(updatedRecordList);
+	}
+	public void beforeUpdate(){
+		//a desenvolver
 	}
 }

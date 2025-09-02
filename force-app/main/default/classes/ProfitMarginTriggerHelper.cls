@@ -9,6 +9,7 @@ public with sharing class ProfitMarginTriggerHelper {
         Id[] relatedCity = new Id[]{};
         Id[] relatedState = new Id[]{};
         Id[] relatedCountry = new Id[]{};
+        Map<String,ProfitMargin__c> mapComparison = new Map<String,ProfitMargin__c>();
         for (ProfitMargin__c iProfitMargin:newProfitMargins){ //checks to see what's related, for a better SOQL query
             if (iProfitMargin.ProductHierarchy__c != null){
                 relatedProductHierarchy.add(iProfitMargin.ProductHierarchy__c);
@@ -31,6 +32,13 @@ public with sharing class ProfitMarginTriggerHelper {
             if (iProfitMargin.Country__c != null){
                 relatedCountry.add(iProfitMargin.Country__c);
             }
+            String key = iProfitMargin.ProductHierarchy__c +'-'+iProfitMargin.Product__c +'-'+iProfitMargin.Country__c+'-'+iProfitMargin.State__c+'-'+iProfitMargin.City__c+'-'+iProfitMargin.AccountGroup__c+'-'+iProfitMargin.Account__c;
+            if (!mapComparison.containsKey(key)){
+                mapComparison.put(key,iProfitMargin);
+            }
+            else{
+                mapComparison.get(key).addError('Duplicata Detectada');
+            }
         }
         ProfitMargin__c[] relatedProfitMargins = [SELECT ProductHierarchy__c,Product__c,AccountGroup__c,Account__c,City__c,
         State__c,Country__c
@@ -38,54 +46,36 @@ public with sharing class ProfitMarginTriggerHelper {
         WHERE (ProductHierarchy__c IN :relatedProductHierarchy OR Product__c IN :relatedProduct) AND
         (AccountGroup__c IN :relatedAccountGroup OR Account__c IN :relatedAccount) AND
         (City__c IN :relatedCity OR State__c IN :relatedState OR Country__c IN :relatedCountry)];
-        //achar forma de evitar O(n2)!
         
-        Map<Id,ProfitMargin__c[]> relatedProfitMarginsMap = new Map<Id,ProfitMargin__c[]>();
-        for (ProfitMargin__c iProfitMargin:relatedProfitMargins){ //creates a map that relates margins to products/hierarchies
-            if (iProfitMargin.Product__c!= null){
-                if (!relatedProfitMarginsMap.containsKey(iProfitMargin.Product__c)){
-                    relatedProfitMarginsMap.put(iProfitMargin.Product__c,new ProfitMargin__c[]{});
-                }
-                relatedProfitMarginsMap.get(iProfitMargin.Product__c).add(iProfitMargin);
+        
+        for (ProfitMargin__c iProfitMargin:relatedProfitMargins){
+            String key = iProfitMargin.ProductHierarchy__c +'-'+iProfitMargin.Product__c +'-'+iProfitMargin.Country__c+'-'
+            +iProfitMargin.State__c+'-'+iProfitMargin.City__c+'-'+iProfitMargin.AccountGroup__c+'-'+iProfitMargin.Account__c;
+            if (!mapComparison.containsKey(key)){
+                mapComparison.put(key,iProfitMargin);
             }
-            else if (iProfitMargin.ProductHierarchy__c!=null){
-                if (!relatedProfitMarginsMap.containsKey(iProfitMargin.ProductHierarchy__c)){
-                    relatedProfitMarginsMap.put(iProfitMargin.ProductHierarchy__c,new ProfitMargin__c[]{});
-                }
-                relatedProfitMarginsMap.get(iProfitMargin.ProductHierarchy__c).add(iProfitMargin);
+            else{
+                mapComparison.get(key).addError('Duplicata Detectada');
             }
-            
+        }
+   }
+   public static void handleUpdateProfitMargin(Map<Id,ProfitMargin__c> newRecordMap,Map<Id,ProfitMargin__c> oldRecordMap){
+        //se algo importante mudar, rodar insert, caso contrario, continuar!
+        ProfitMargin__c[] toCheck = new ProfitMargin__c[]{};
+        for (Id iId:newRecordMap.keySet()){
+            if (newRecordMap.get(iId).Product__c != oldRecordMap.get(iId).Product__c ||
+            newRecordMap.get(iId).ProductHierarchy__c != oldRecordMap.get(iId).ProductHierarchy__c ||
+            newRecordMap.get(iId).Account__c != oldRecordMap.get(iId).Account__c ||
+            newRecordMap.get(iId).AccountGroup__c != oldRecordMap.get(iId).AccountGroup__c ||
+            newRecordMap.get(iId).City__c != oldRecordMap.get(iId).City__c ||
+            newRecordMap.get(iId).State__c != oldRecordMap.get(iId).State__c ||
+            newRecordMap.get(iId).Country__c != oldRecordMap.get(iId).Country__c){
+                toCheck.add(newRecordMap.get(iId));
+            }
+        }
+        if (!toCheck.isEmpty()){
+            handleInsertProfitMargin(toCheck);
         }
 
-        for (ProfitMargin__c iProfitMargin:newProfitMargins){ //checks to see if there's a duplicate margin
-            if (iProfitMargin.Product__c != null) {
-                if (relatedProfitMarginsMap.containsKey(iProfitMargin.Product__c)){
-                    for (ProfitMargin__c iRelatedProfitMargin:relatedProfitMarginsMap.get(iProfitMargin.Product__c)) {
-                        if (iProfitMargin.Account__c  == iRelatedProfitMargin.Account__c && 
-                        iProfitMargin.AccountGroup__c == iRelatedProfitMargin.AccountGroup__c &&
-                        iProfitMargin.City__c         == iRelatedProfitMargin.City__c &&
-                        iProfitMargin.State__c        == iRelatedProfitMargin.State__c &&
-                        iProfitMargin.Country__c      == iRelatedProfitMargin.Country__c) {
-                            iProfitMargin.addError('Duplicata Detectada');
-                            break;
-                        }
-                    }
-                }
-            }
-            else if (iProfitMargin.ProductHierarchy__c != null) {
-                if (relatedProfitMarginsMap.containsKey(iProfitMargin.ProductHierarchy__c)){
-                    for (ProfitMargin__c iRelatedProfitMargin:relatedProfitMarginsMap.get(iProfitMargin.ProductHierarchy__c)){
-                        if (iProfitMargin.Account__c == iRelatedProfitMargin.Account__c && 
-                        iProfitMargin.AccountGroup__c == iRelatedProfitMargin.AccountGroup__c &&
-                        iProfitMargin.City__c == iRelatedProfitMargin.City__c &&
-                        iProfitMargin.State__c == iRelatedProfitMargin.State__c &&
-                        iProfitMargin.Country__c == iRelatedProfitMargin.Country__c){
-                            iProfitMargin.addError('Duplicata Detectada');
-                            break;
-                        }
-                    }
-                }
-            }
-        }
    }
 }

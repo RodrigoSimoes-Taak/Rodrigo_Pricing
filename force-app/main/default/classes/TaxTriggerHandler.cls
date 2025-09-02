@@ -31,6 +31,6 @@ public with sharing class TaxTriggerHandler {
 		TaxTriggerHelper.handleInsertTax(this.newRecordList);
 	}
 	public void beforeUpdate() {
-        TaxTriggerHelper.handleInsertTax(this.newRecordList);
+        TaxTriggerHelper.handleUpdateTax(this.newRecordMap,this.oldRecordMap);
 	}
 }
