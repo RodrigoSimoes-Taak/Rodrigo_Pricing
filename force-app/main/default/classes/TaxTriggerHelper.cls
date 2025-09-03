@@ -42,4 +42,7 @@ public with sharing class TaxTriggerHelper {
             handleInsertTax(toCheck);
         }
     }
+    public static void handleUpdateOrderItemInfo(Map<Id,Tax__c> newRecordMap){
+        update [SELECT Id FROM OrderItem WHERE Tax__c IN:newRecordMap.keySet()];
+    }
 }

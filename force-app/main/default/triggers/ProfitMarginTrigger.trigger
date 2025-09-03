@@ -1,4 +1,4 @@
-trigger ProfitMarginTrigger on ProfitMargin__c (before insert,before update) {
+trigger ProfitMarginTrigger on ProfitMargin__c (before insert,before update,after update) {
     System.debug('ProfitMargin Trigger => (' + Trigger.operationType + ')');
     ProfitMarginTriggerHandler handler = new ProfitMarginTriggerHandler(Trigger.old, Trigger.new,
         Trigger.oldMap, Trigger.newMap);
@@ -9,6 +9,9 @@ trigger ProfitMarginTrigger on ProfitMargin__c (before insert,before update) {
             }
             when BEFORE_UPDATE {
                 handler.beforeUpdate();
+            }
+            when AFTER_UPDATE {
+                handler.afterUpdate();
             }
             
 

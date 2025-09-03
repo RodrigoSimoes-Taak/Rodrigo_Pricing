@@ -59,6 +59,6 @@ public with sharing class OrderItemTriggerHandler {
 		OrderItemTriggerHelper.handleProductCost(updatedRecordList);
 	}
 	public void beforeUpdate(){
-		//a desenvolver
+		beforeInsert();
 	}
 }

@@ -63,7 +63,9 @@ public with sharing class ShippingTriggerHelper {
         if (!toCheck.isEmpty()){
             handleInsertShipping(toCheck);
         }
-
+    }
+    public static void handleUpdateOrderItemInfo(Map<Id,Shipping__c> newRecordMap){
+        update [SELECT Id FROM OrderItem WHERE Shipping__c IN :newRecordMap.keySet()];
 
     }
 }

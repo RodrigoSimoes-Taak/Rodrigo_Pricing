@@ -33,4 +33,7 @@ public with sharing class ShippingTriggerHandler {
 	public void beforeUpdate() {
         ShippingTriggerHelper.handleUpdateShipping(this.newRecordMap,this.oldRecordMap);
 	}
+	public void afterUpdate(){
+		ShippingTriggerHelper.handleUpdateOrderItemInfo(this.newRecordMap);
+	}
 }

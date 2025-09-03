@@ -69,7 +69,8 @@ public with sharing class ProfitMarginTriggerHelper {
             newRecordMap.get(iId).AccountGroup__c != oldRecordMap.get(iId).AccountGroup__c ||
             newRecordMap.get(iId).City__c != oldRecordMap.get(iId).City__c ||
             newRecordMap.get(iId).State__c != oldRecordMap.get(iId).State__c ||
-            newRecordMap.get(iId).Country__c != oldRecordMap.get(iId).Country__c){
+            newRecordMap.get(iId).Country__c != oldRecordMap.get(iId).Country__c||
+            newRecordMap.get(iId).Status__c != oldRecordMap.get(iId).Status__c){
                 toCheck.add(newRecordMap.get(iId));
             }
         }
@@ -78,4 +79,7 @@ public with sharing class ProfitMarginTriggerHelper {
         }
 
    }
+   public static void handleUpdateOrderItemInfo(Map<Id,ProfitMargin__c> newRecordMap){
+        update [SELECT Id FROM OrderItem WHERE ProfitMargin__c IN :newRecordMap.keySet()];
+    }
 }

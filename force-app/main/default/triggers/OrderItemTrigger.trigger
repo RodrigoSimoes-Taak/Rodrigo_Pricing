@@ -10,7 +10,6 @@ trigger OrderItemTrigger on OrderItem (before insert, before update) {
             when BEFORE_UPDATE{
                 handler.beforeUpdate();
             }
-            
 
         }
 

@@ -33,4 +33,7 @@ public with sharing class ProfitMarginTriggerHandler {
 	public void beforeUpdate() {
         ProfitMarginTriggerHelper.handleUpdateProfitMargin(this.newRecordMap,this.oldRecordMap);
 	}
+	public void afterUpdate(){
+		ProfitMarginTriggerHelper.handleUpdateOrderItemInfo(this.newRecordMap);
+	}
 }

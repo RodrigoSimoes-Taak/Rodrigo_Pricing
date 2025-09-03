@@ -1,4 +1,4 @@
-trigger TaxTrigger on Tax__c (before insert,before update) {
+trigger TaxTrigger on Tax__c (before insert,before update,after update) {
     System.debug('Tax Trigger => (' + Trigger.operationType + ')');
     TaxTriggerHandler handler = new TaxTriggerHandler(Trigger.old, Trigger.new,
         Trigger.oldMap, Trigger.newMap);
@@ -9,6 +9,9 @@ trigger TaxTrigger on Tax__c (before insert,before update) {
             }
             when BEFORE_UPDATE{
                 handler.beforeUpdate();
+            }
+            when AFTER_UPDATE{
+                handler.afterUpdate();
             }
         }
     }

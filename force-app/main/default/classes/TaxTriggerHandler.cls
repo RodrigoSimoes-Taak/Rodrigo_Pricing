@@ -33,4 +33,7 @@ public with sharing class TaxTriggerHandler {
 	public void beforeUpdate() {
         TaxTriggerHelper.handleUpdateTax(this.newRecordMap,this.oldRecordMap);
 	}
+	public void afterUpdate(){
+		TaxTriggerHelper.handleUpdateOrderItemInfo(this.newRecordMap);
+	}
 }
