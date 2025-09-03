@@ -10,7 +10,7 @@ public with sharing class OrderItemTriggerHelper {
             relatedOrders.add(iOrderItem.OrderId);
         }
         relatedOrdersMap = new Map<Id,Order>([SELECT Id, AccountAddress__r.City__c,AccountAddress__r.City__r.State__c,
-        AccountAddress__r.City__r.State__r.Country__c 
+        AccountAddress__r.City__r.State__r.Country__c,Account.AccountGroup__c,AccountId 
         FROM Order 
         WHERE Id IN :relatedOrders]);
 
@@ -50,7 +50,7 @@ public with sharing class OrderItemTriggerHelper {
         System.debug('D2 '+relatedProductsMap);
         
         //vv Frete
-        Shipping__c[] relatedShippings = [SELECT Value__c,Product__c,ProductHierarchy__c 
+        Shipping__c[] relatedShippings = [SELECT Value__c,Product__c,ProductHierarchy__c,City__c,State__c,Country__c 
         FROM Shipping__c 
         WHERE (Product__c IN :relatedProductsMap.keySet() OR ProductHierarchy__c IN :relatedHierarchyMap.keySet())
         AND Status__c = 'Aprovado'];
@@ -89,7 +89,7 @@ public with sharing class OrderItemTriggerHelper {
             }
             else{
                 for (Id iProduct:relatedHierarchyMap.get(iProfitMargin.ProductHierarchy__c)){
-                    relatedProductsMap.get(iProfitMargin.Product__c).get('Margin').add(iProfitMargin);
+                    relatedProductsMap.get(iProduct).get('Margin').add(iProfitMargin);
                 }
             }
         }
@@ -102,7 +102,7 @@ public with sharing class OrderItemTriggerHelper {
                 relatedProductsMap.get(iOrderItem.Product2Id).get('Margin').isEmpty()){
                 
 
-                iOrderItem.addError('Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.'); 
+                iOrderItem.addError('01 - Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.'); 
             }
         }
     }
@@ -121,9 +121,170 @@ public with sharing class OrderItemTriggerHelper {
 
             } 
             if (iOrderItem.TaxPercentage__c == null){
-                iOrderItem.addError('Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.');
+                iOrderItem.addError('02 - Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.');
             }
         }
         
+    }
+    public static void handleShipping(OrderItem[] newOrderItems){
+        if (newOrderItems.isEmpty()){
+            return;
+        }
+        System.debug('SH2 '+relatedProductsMap);
+        Integer[] opcoes = new Integer[]{};
+        Shipping__c selecionado;
+        Integer[] melhor = new Integer[]{};
+        for (OrderItem iOrderItem:newOrderItems){
+            melhor.clear();
+            selecionado = null;
+            for (Shipping__c iShipping: ((Shipping__c[])relatedProductsMap.get(iOrderItem.Product2Id).get('Shipping'))){
+                opcoes.clear();
+                if (iShipping.Product__c != null){
+                    //quer dizer que eh relacao de produto!
+                    opcoes.add(1);
+                }
+                else{
+                    //quer dizer que eh relacao de hierarquia!
+                    opcoes.add(2);
+                }
+                if(iShipping.City__c != null){
+                    //quer dizer que tem cidade!
+                    if (iShipping.City__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__c){//logo cidade bate
+                        opcoes.add(1);
+                    }
+                }
+                else if(iShipping.State__c != null){
+                    //quer dizer que tem estado!
+                    if (iShipping.State__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__r.State__c){ //logo estado bate
+                        opcoes.add(2);
+                    }
+                }
+                else if(iShipping.Country__c != null){
+                    //quer dizer que tem pais!
+                    if (iShipping.Country__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__r.State__r.Country__c){ //logo pais bate
+                        opcoes.add(3);
+                    }
+                }
+                if (opcoes.size()==2){
+                    if (selecionado == null){
+                        selecionado = iShipping;
+                        melhor = opcoes;
+                    }
+                    else{
+                        if (opcoes[0]<melhor[0]){
+                            selecionado = iShipping;
+                            melhor = opcoes;
+                        }
+                        else if (opcoes[0] == melhor[0] && opcoes[1]<melhor[1]){
+                            selecionado = iShipping;
+                            melhor = opcoes;
+                        }
+                    }
+                }
+
+            }
+            if (selecionado == null){
+                iOrderItem.addError('03 - Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.');            
+            }
+            else{
+                iOrderItem.ShippingCost__c = selecionado.Value__c;
+                iOrderItem.Shipping__c = selecionado.Id;
+            }
+        }
+    }
+    public static void handleProfitMargin(OrderItem[] newOrderItems){
+        if (newOrderItems.isEmpty()){
+            return;
+        }
+        System.debug('PF2 '+relatedProductsMap);
+        Integer[] opcoes = new Integer[]{};
+        ProfitMargin__c selecionado;
+        Integer[] melhor = new Integer[]{};
+        for (OrderItem iOrderItem:newOrderItems){
+            melhor.clear();
+            selecionado = null;
+            for (ProfitMargin__c iProfitMargin: ((ProfitMargin__c[])relatedProductsMap.get(iOrderItem.Product2Id).get('Margin'))){
+                opcoes.clear();
+                if (iProfitMargin.Product__c != null){
+                    //quer dizer que eh relacao de produto!
+                    opcoes.add(1);
+                }
+                else{
+                    //quer dizer que eh relacao de hierarquia!
+                    opcoes.add(2);
+                }
+                if (iProfitMargin.Account__c != null){
+                    //quer dizer que eh para conta
+                    if (iProfitMargin.Account__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountId){
+                        opcoes.add(1);
+                    }
+                }
+                else{
+                    if (iProfitMargin.AccountGroup__c == relatedOrdersMap.get(iOrderItem.OrderId).Account.AccountGroup__c){
+                        opcoes.add(2);
+                    }
+                }
+                if(iProfitMargin.City__c != null){
+                    //quer dizer que tem cidade!
+                    if (iProfitMargin.City__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__c){//logo cidade bate
+                        opcoes.add(1);
+                    }
+                }
+                else if(iProfitMargin.State__c != null){
+                    //quer dizer que tem estado!
+                    if (iProfitMargin.State__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__r.State__c){ //logo estado bate
+                        opcoes.add(2);
+                    }
+                }
+                else if(iProfitMargin.Country__c != null){
+                    //quer dizer que tem pais!
+                    if (iProfitMargin.Country__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__r.State__r.Country__c){ //logo pais bate
+                        opcoes.add(3);
+                    }
+                }
+                
+                if (opcoes.size()==3){
+                    if (selecionado == null){
+                        selecionado = iProfitMargin;
+                        melhor = opcoes;
+                    }
+                    else{
+                        if (opcoes[0]<melhor[0]){
+                            selecionado = iProfitMargin;
+                            melhor = opcoes;
+                        }
+                        else if (opcoes[0] == melhor[0] && opcoes[1]<melhor[1]){
+                            selecionado = iProfitMargin;
+                            melhor = opcoes;
+                        }
+                        else if (opcoes[0] == melhor[0] && opcoes[1] == melhor[1] && opcoes[2] < melhor[2]){
+                            selecionado = iProfitMargin;
+                            melhor = opcoes;
+                        }
+                    }
+                }
+
+            }
+            if (selecionado == null){
+                iOrderItem.addError('03 - Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.');            
+            }
+            else{
+                iOrderItem.MarginPercentage__c = selecionado.MarginPercentage__c;
+                iOrderItem.ProfitMargin__c = selecionado.Id;
+            }
+        }
+    }
+    public static void handleProductCost(OrderItem[] newOrderItems){
+        if (newOrderItems.isEmpty()){
+            return;
+        }
+        System.debug('PC2 '+relatedProductsMap);
+        for (OrderItem iOrderItem:newOrderItems){
+            for (PricebookEntry iPricebookEntry:((PricebookEntry[])relatedProductsMap.get(iOrderItem.Product2Id).get('PricebookEntry'))){
+                iOrderItem.ProductCost__c = iPricebookEntry.UnitPrice;
+
+            }
+        }
+
     }
 }

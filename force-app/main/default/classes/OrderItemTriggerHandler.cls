@@ -36,6 +36,27 @@ public with sharing class OrderItemTriggerHandler {
 			}
 		}
 		OrderItemTriggerHelper.handleTax(updatedRecordList);
+		updatedRecordList.clear();
+		for (OrderItem iOrderItem : this.newRecordList){
+			if (!iOrderItem.hasErrors()){
+				updatedRecordList.add(iOrderItem);
+			}
+		}
+		OrderItemTriggerHelper.handleShipping(updatedRecordList);
+		updatedRecordList.clear();
+		for (OrderItem iOrderItem : this.newRecordList){
+			if (!iOrderItem.hasErrors()){
+				updatedRecordList.add(iOrderItem);
+			}
+		}
+		OrderItemTriggerHelper.handleProfitMargin(updatedRecordList);
+		updatedRecordList.clear();
+		for (OrderItem iOrderItem : this.newRecordList){
+			if (!iOrderItem.hasErrors()){
+				updatedRecordList.add(iOrderItem);
+			}
+		}
+		OrderItemTriggerHelper.handleProductCost(updatedRecordList);
 	}
 	public void beforeUpdate(){
 		//a desenvolver
