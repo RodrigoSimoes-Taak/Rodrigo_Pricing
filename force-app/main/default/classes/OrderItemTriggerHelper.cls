@@ -102,7 +102,7 @@ public with sharing class OrderItemTriggerHelper {
                 relatedProductsMap.get(iOrderItem.Product2Id).get('Margin').isEmpty()){
                 
 
-                iOrderItem.addError('01 - Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.'); 
+                iOrderItem.addError('RE - Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.'); 
             }
         }
     }
@@ -112,6 +112,7 @@ public with sharing class OrderItemTriggerHelper {
         }
         System.debug('TX1 '+relatedProductsMap);
         for (OrderItem iOrderItem:newOrderItems){
+            iOrderItem.TaxPercentage__c = null;
             for (Tax__c iTax: ((Tax__c[])relatedProductsMap.get(iOrderItem.Product2Id).get('Tax'))){
                 if (iTax.State__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__r.State__c){
                     iOrderItem.TaxPercentage__c = iTax.TaxOnCost__c;
@@ -121,7 +122,7 @@ public with sharing class OrderItemTriggerHelper {
 
             } 
             if (iOrderItem.TaxPercentage__c == null){
-                iOrderItem.addError('02 - Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.');
+                iOrderItem.addError('TX - Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.');
             }
         }
         
@@ -184,7 +185,7 @@ public with sharing class OrderItemTriggerHelper {
 
             }
             if (selecionado == null){
-                iOrderItem.addError('03 - Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.');            
+                iOrderItem.addError('SH - Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.');            
             }
             else{
                 iOrderItem.ShippingCost__c = selecionado.Value__c;
@@ -266,7 +267,7 @@ public with sharing class OrderItemTriggerHelper {
 
             }
             if (selecionado == null){
-                iOrderItem.addError('03 - Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.');            
+                iOrderItem.addError('PM - Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.');            
             }
             else{
                 iOrderItem.MarginPercentage__c = selecionado.MarginPercentage__c;
