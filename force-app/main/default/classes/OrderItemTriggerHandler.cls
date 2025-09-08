@@ -28,32 +28,16 @@ public with sharing class OrderItemTriggerHandler {
 		this.newRecordMap = newRecordMap;
 	}
 	public void beforeInsert() {
-		List<OrderItem> updatedRecordList = new List<OrderItem>();
+
+		
 		OrderItemTriggerHelper.handleInsertOrderItem(this.newRecordList);
-		for (OrderItem iOrderItem : this.newRecordList){
-			if (!iOrderItem.hasErrors()){
-				updatedRecordList.add(iOrderItem);
-			}
+		String[] parameterList = new String[]{'Margin', 'Shipping', 'Tax', 'Cost'};
+
+		for (String iParameter:parameterList){
+			OrderItemTriggerHelper.handleSpecificity(this.newRecordList, iParameter);
+			
 		}
-		OrderItemTriggerHelper.handleSpecificity(this.newRecordList, 'Margin');
-		for (OrderItem iOrderItem : this.newRecordList){
-			if (!iOrderItem.hasErrors()){
-				updatedRecordList.add(iOrderItem);
-			}
-		}
-		OrderItemTriggerHelper.handleSpecificity(this.newRecordList, 'Shipping');
-		for (OrderItem iOrderItem : this.newRecordList){
-			if (!iOrderItem.hasErrors()){
-				updatedRecordList.add(iOrderItem);
-			}
-		}
-		OrderItemTriggerHelper.handleSpecificity(this.newRecordList, 'Tax');
-		for (OrderItem iOrderItem : this.newRecordList){
-			if (!iOrderItem.hasErrors()){
-				updatedRecordList.add(iOrderItem);
-			}
-		}
-		OrderItemTriggerHelper.handleSpecificity(this.newRecordList, 'Cost');
+			
 		/*
 		OrderItemTriggerHelper.handleTax(updatedRecordList);
 		updatedRecordList.clear();
