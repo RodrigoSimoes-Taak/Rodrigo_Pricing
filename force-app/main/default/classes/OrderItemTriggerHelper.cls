@@ -15,10 +15,11 @@ public with sharing class OrderItemTriggerHelper {
         for (OrderItem iOrderItem:newOrderItems){
             relatedOrders.add(iOrderItem.OrderId);
         }
-        relatedOrdersMap = new Map<Id,Order>([SELECT Id, AccountAddress__r.City__c,AccountAddress__r.City__r.State__c,
-        AccountAddress__r.City__r.State__r.Country__c,Account.AccountGroup__c,AccountId 
-        FROM Order 
-        WHERE Id IN :relatedOrders]);
+        relatedOrdersMap = new Map<Id,Order>(
+            [SELECT Id, AccountAddress__r.City__c,AccountAddress__r.City__r.State__c,
+            AccountAddress__r.City__r.State__r.Country__c,Account.AccountGroup__c,AccountId 
+            FROM Order 
+            WHERE Id IN :relatedOrders]);
 
         for (OrderItem iOrderItem:newOrderItems){
             relatedProducts.add(iOrderItem.Product2Id);
@@ -40,7 +41,10 @@ public with sharing class OrderItemTriggerHelper {
         }
 
         Map<Id,Id[]> relatedHierarchyMap = new Map<Id,Id[]>(); //relates Map<ProductHierarchy__c.Id,Product2Id[]>, since a hierarchy can have multiple products
-        for (Product2 iProduct:[SELECT Id, ProductHierarchy__c FROM Product2 WHERE Id IN:relatedProducts]){
+        for (Product2 iProduct:[
+            SELECT Id, ProductHierarchy__c 
+            FROM Product2 
+            WHERE Id IN:relatedProducts]){
             if (iProduct.ProductHierarchy__c != null){
                 if (!relatedHierarchyMap.containsKey(iProduct.ProductHierarchy__c)){
                     relatedHierarchyMap.put(iProduct.ProductHierarchy__c,new Id[]{});
@@ -48,12 +52,10 @@ public with sharing class OrderItemTriggerHelper {
                 relatedHierarchyMap.get(iProduct.ProductHierarchy__c).add(iProduct.Id);  
             }    
         }
-        //procurar hierarquias baseado no product2 relacionados, e aí inserir as hierarquias
-        //precisa pegar valor de custo de producao (pricebookentry) frete, imposto e margem!
         //vv Production Cost
-        PricebookEntry[] relatedPricebooks = [SELECT UnitPrice,Product2Id FROM PricebookEntry 
-                                            WHERE Product2Id IN :relatedProducts AND isActive = True 
-                                            AND Pricebook2.isActive = True ]; //checks if pricebook is active and listing is active
+        PricebookEntry[] relatedPricebooks = [
+            SELECT UnitPrice,Product2Id FROM PricebookEntry 
+            WHERE Product2Id IN :relatedProducts AND isActive = True AND Pricebook2.isActive = True ]; //checks if pricebook is active and listing is active
         for (PricebookEntry iPricebookEntry:relatedPricebooks){//adds all pricebook entries to their product
             relatedProductsCostMap.get(iPricebookEntry.Product2Id).add(iPricebookEntry);
         }
@@ -62,10 +64,10 @@ public with sharing class OrderItemTriggerHelper {
         
         
         //vv Shipping
-        Shipping__c[] relatedShippings = [SELECT Value__c,Product__c,ProductHierarchy__c,City__c,State__c,Country__c 
-        FROM Shipping__c 
-        WHERE (Product__c IN :relatedProducts OR ProductHierarchy__c IN :relatedHierarchyMap.keySet())
-        AND Status__c = 'Aprovado'];
+        Shipping__c[] relatedShippings = [
+            SELECT Value__c,Product__c,ProductHierarchy__c,City__c,State__c,Country__c 
+            FROM Shipping__c 
+            WHERE (Product__c IN :relatedProducts OR ProductHierarchy__c IN :relatedHierarchyMap.keySet()) AND Status__c = 'Aprovado'];
         System.debug(relatedShippings.size());
         for (Shipping__c iShipping:relatedShippings){
             System.debug(relatedShippings);
@@ -83,16 +85,20 @@ public with sharing class OrderItemTriggerHelper {
         
         
         //vv Tax
-        Tax__c[] relatedTaxes = [SELECT TaxOnCost__c,Product__c,State__c FROM Tax__c WHERE Product__c IN :relatedProducts AND Status__c = 'Aprovado'];
+        Tax__c[] relatedTaxes = [
+            SELECT TaxOnCost__c,Product__c,State__c 
+            FROM Tax__c 
+            WHERE Product__c IN :relatedProducts AND Status__c = 'Aprovado'];
         for (Tax__c iTax:relatedTaxes){
             relatedProductsTaxMap.get(iTax.Product__c).add(iTax);
         }
 
         //vv Profit Margin
-        ProfitMargin__c[] relatedMargins =[SELECT ProductHierarchy__c,Product__c,City__c,State__c,Country__c,AccountGroup__c,Account__c,MarginPercentage__c
-        FROM ProfitMargin__c 
-        WHERE (Product__c IN :relatedProducts OR ProductHierarchy__c IN :relatedHierarchyMap.keySet()) 
-        AND Status__c = 'Aprovado'];
+        ProfitMargin__c[] relatedMargins =[
+            SELECT ProductHierarchy__c,Product__c,City__c,State__c,Country__c,AccountGroup__c,Account__c,MarginPercentage__c
+            FROM ProfitMargin__c 
+            WHERE (Product__c IN :relatedProducts OR ProductHierarchy__c IN :relatedHierarchyMap.keySet()) 
+            AND Status__c = 'Aprovado'];
         
         for (ProfitMargin__c iProfitMargin:relatedMargins){
             if (iProfitMargin.Product__c != null){
@@ -117,6 +123,8 @@ public with sharing class OrderItemTriggerHelper {
             }
         }
     }
+
+    /*
     public static void handleTax(OrderItem[] newOrderItems){
         if (newOrderItems.isEmpty()){
             return;
@@ -136,7 +144,6 @@ public with sharing class OrderItemTriggerHelper {
                 iOrderItem.addError('TX - Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.');
             }
         }
-        
     }
     public static void handleShipping(OrderItem[] newOrderItems){
         if (newOrderItems.isEmpty()){
@@ -296,6 +303,151 @@ public with sharing class OrderItemTriggerHelper {
                 iOrderItem.ProductCost__c = iPricebookEntry.UnitPrice; //there should be only 1 price per Product2, therefore it's a length 1 for loop
 
             }
+        }
+    }
+
+
+    */
+    public static void handleSpecificity(OrderItem[] newOrderItems,String objectType){
+        //possibly replace String objectType with an Enum, eventually
+        //expected call would be handleSpecificity(newOrderItems,'Tax');
+        if (newOrderItems.isEmpty()){
+            return;
+        }
+        Map<Id,SObject[]> relatedObjectsMap;
+        Integer expectedSize;
+        String field1;
+        String field2;
+        
+        if (objectType == 'Margin'){
+            relatedObjectsMap = relatedProductsProfitMap;
+            expectedSize = 3;
+        }
+        else if (objectType == 'Shipping'){
+            relatedObjectsMap = relatedProductsShippingMap;
+            expectedSize = 2;
+        }
+        else if (objectType=='Tax'){ //special case
+            System.debug('TX');
+            for (OrderItem iOrderItem:newOrderItems){
+                iOrderItem.TaxPercentage__c = null;
+                for (Tax__c iTax: relatedProductsTaxMap.get(iOrderItem.Product2Id)){
+                    if (iTax.State__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__r.State__c){
+                        iOrderItem.TaxPercentage__c = iTax.TaxOnCost__c;
+                        iOrderItem.Tax__c = iTax.Id;
+                        break;
+                    }
+
+                } 
+                if (iOrderItem.TaxPercentage__c == null){
+                    iOrderItem.addError(objectType+' - Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.');
+                }
+            }
+            return;
+
+        }
+        else if (objectType == 'Cost'){ //special case
+            System.debug('PC');
+            for (OrderItem iOrderItem:newOrderItems){
+                for (PricebookEntry iPricebookEntry:relatedProductsCostMap.get(iOrderItem.Product2Id)){
+                    iOrderItem.ProductCost__c = iPricebookEntry.UnitPrice; //there should be only 1 price per Product2, therefore it's a length 1 for loop
+
+                }
+            }
+            return;
+        }
+        for (OrderItem iOrderItem:newOrderItems){
+            Integer[] mostSpecificOptions = new Integer[]{};
+            SObject mostSpecificObject = null;
+            for (SObject iObject: relatedObjectsMap.get(iOrderItem.Product2Id)){
+                Integer[] currentOptions = new Integer[]{};
+
+                if (iObject.get('Product__c') != null){
+                    
+                    currentOptions.add(1);
+                }
+                else{
+                    
+                    currentOptions.add(2);
+                }
+
+                if (objectType == 'Margin'){
+                    if (iObject.get('Account__c') != null){
+                        if (iObject.get('Account__c') == relatedOrdersMap.get(iOrderItem.OrderId).AccountId){
+                            currentOptions.add(1);
+                        }
+                    }
+                    else{
+                        if (iObject.get('AccountGroup__c') == relatedOrdersMap.get(iOrderItem.OrderId).Account.AccountGroup__c){
+                            currentOptions.add(2);
+                        }
+                    }
+
+                }
+                if(iObject.get('City__c') != null){
+                    
+                    if (iObject.get('City__c') == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__c){
+                        currentOptions.add(1);
+                    }
+                }
+                else if(iObject.get('State__c') != null){
+                    
+                    if (iObject.get('State__c') == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__r.State__c){ 
+                        currentOptions.add(2);
+                    }
+                }
+                else if(iObject.get('Country__c') != null){
+                    
+                    if (iObject.get('Country__c') == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__r.State__r.Country__c){ 
+                        currentOptions.add(3);
+                    }
+                }
+
+
+                if (currentOptions.size()==expectedSize){
+                    if (mostSpecificObject == null){
+                        mostSpecificObject = iObject;
+                        mostSpecificOptions = currentOptions;
+                    }
+                    else{
+                        if (currentOptions[0]<mostSpecificOptions[0]){
+                            mostSpecificObject = iObject;
+                            mostSpecificOptions = currentOptions;
+                        }
+                        else if (expectedSize>1){
+                            if (currentOptions[0] == mostSpecificOptions[0] && currentOptions[1]<mostSpecificOptions[1]){
+                            mostSpecificObject = iObject;
+                            mostSpecificOptions = currentOptions;
+                            }
+                        }
+                        else if (expectedSize>2){
+                            if (currentOptions[0] == mostSpecificOptions[0] && currentOptions[1] == mostSpecificOptions[1] && currentOptions[2] < mostSpecificOptions[2]){
+                            mostSpecificObject = iObject;
+                            mostSpecificOptions = currentOptions;
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            if (mostSpecificObject == null){
+                iOrderItem.addError(objectType+' - Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.');            
+            }
+            else{
+                if (objectType == 'Margin'){
+                    iOrderItem.put('MarginPercentage__c', mostSpecificObject.get('MarginPercentage__c'));
+                    iOrderItem.put('ProfitMargin__c', mostSpecificObject.Id);
+                }
+                else if (objectType == 'Shipping'){
+                    iOrderItem.put('ShippingCost__c', mostSpecificObject.get('Value__c'));
+                    iOrderItem.put('Shipping__c', mostSpecificObject.Id);
+                }
+                
+            }
+           
+
+
         }
 
     }

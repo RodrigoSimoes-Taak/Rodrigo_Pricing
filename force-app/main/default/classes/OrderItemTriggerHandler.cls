@@ -35,6 +35,26 @@ public with sharing class OrderItemTriggerHandler {
 				updatedRecordList.add(iOrderItem);
 			}
 		}
+		OrderItemTriggerHelper.handleSpecificity(this.newRecordList, 'Margin');
+		for (OrderItem iOrderItem : this.newRecordList){
+			if (!iOrderItem.hasErrors()){
+				updatedRecordList.add(iOrderItem);
+			}
+		}
+		OrderItemTriggerHelper.handleSpecificity(this.newRecordList, 'Shipping');
+		for (OrderItem iOrderItem : this.newRecordList){
+			if (!iOrderItem.hasErrors()){
+				updatedRecordList.add(iOrderItem);
+			}
+		}
+		OrderItemTriggerHelper.handleSpecificity(this.newRecordList, 'Tax');
+		for (OrderItem iOrderItem : this.newRecordList){
+			if (!iOrderItem.hasErrors()){
+				updatedRecordList.add(iOrderItem);
+			}
+		}
+		OrderItemTriggerHelper.handleSpecificity(this.newRecordList, 'Cost');
+		/*
 		OrderItemTriggerHelper.handleTax(updatedRecordList);
 		updatedRecordList.clear();
 		for (OrderItem iOrderItem : this.newRecordList){
@@ -57,6 +77,7 @@ public with sharing class OrderItemTriggerHandler {
 			}
 		}
 		OrderItemTriggerHelper.handleProductCost(updatedRecordList);
+		*/
 	}
 	public void beforeUpdate(){
 		beforeInsert();
