@@ -106,7 +106,7 @@ public with sharing class OrderItemTriggerHelper {
         }
     
         for (OrderItem iOrderItem:newOrderItems){
-            //checks if none of the maps inside the maps are empty, if true, addError!
+            //checks if none of the maps are empty, if true, addError!
             if (relatedProductsCostMap.get(iOrderItem.Product2Id).isEmpty() ||
                 relatedProductsProfitMap.get(iOrderItem.Product2Id).isEmpty() ||
                 relatedProductsShippingMap.get(iOrderItem.Product2Id).isEmpty()||
@@ -143,64 +143,64 @@ public with sharing class OrderItemTriggerHelper {
             return;
         }
         System.debug('SH');
-        Integer[] opcoes = new Integer[]{};
-        Shipping__c selecionado;
-        Integer[] melhor = new Integer[]{};
+        
+        
+        
         for (OrderItem iOrderItem:newOrderItems){
-            melhor.clear();
-            selecionado = null;
+            Integer[] mostSpecificOptions = new Integer[]{};
+            Shipping__c mostSpecificObject = null;
             for (Shipping__c iShipping: relatedProductsShippingMap.get(iOrderItem.Product2Id)){
-                opcoes.clear();
+                Integer[] currentOptions = new Integer[]{};
                 if (iShipping.Product__c != null){
-                    //quer dizer que eh relacao de produto!
-                    opcoes.add(1);
+                    
+                    currentOptions.add(1);
                 }
                 else{
-                    //quer dizer que eh relacao de hierarquia!
-                    opcoes.add(2);
+                    
+                    currentOptions.add(2);
                 }
                 if(iShipping.City__c != null){
-                    //quer dizer que tem cidade!
-                    if (iShipping.City__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__c){//logo cidade bate
-                        opcoes.add(1);
+                    
+                    if (iShipping.City__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__c){
+                        currentOptions.add(1);
                     }
                 }
                 else if(iShipping.State__c != null){
-                    //quer dizer que tem estado!
-                    if (iShipping.State__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__r.State__c){ //logo estado bate
-                        opcoes.add(2);
+                    
+                    if (iShipping.State__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__r.State__c){ 
+                        currentOptions.add(2);
                     }
                 }
                 else if(iShipping.Country__c != null){
-                    //quer dizer que tem pais!
-                    if (iShipping.Country__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__r.State__r.Country__c){ //logo pais bate
-                        opcoes.add(3);
+                    
+                    if (iShipping.Country__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__r.State__r.Country__c){ 
+                        currentOptions.add(3);
                     }
                 }
-                if (opcoes.size()==2){
-                    if (selecionado == null){
-                        selecionado = iShipping;
-                        melhor = opcoes;
+                if (currentOptions.size()==2){
+                    if (mostSpecificObject == null){
+                        mostSpecificObject = iShipping;
+                        mostSpecificOptions = currentOptions;
                     }
                     else{
-                        if (opcoes[0]<melhor[0]){
-                            selecionado = iShipping;
-                            melhor = opcoes;
+                        if (currentOptions[0]<mostSpecificOptions[0]){
+                            mostSpecificObject = iShipping;
+                            mostSpecificOptions = currentOptions;
                         }
-                        else if (opcoes[0] == melhor[0] && opcoes[1]<melhor[1]){
-                            selecionado = iShipping;
-                            melhor = opcoes;
+                        else if (currentOptions[0] == mostSpecificOptions[0] && currentOptions[1]<mostSpecificOptions[1]){
+                            mostSpecificObject = iShipping;
+                            mostSpecificOptions = currentOptions;
                         }
                     }
                 }
 
             }
-            if (selecionado == null){
+            if (mostSpecificObject == null){
                 iOrderItem.addError('SH - Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.');            
             }
             else{
-                iOrderItem.ShippingCost__c = selecionado.Value__c;
-                iOrderItem.Shipping__c = selecionado.Id;
+                iOrderItem.ShippingCost__c = mostSpecificObject.Value__c;
+                iOrderItem.Shipping__c = mostSpecificObject.Id;
             }
         }
     }
@@ -209,80 +209,80 @@ public with sharing class OrderItemTriggerHelper {
             return;
         }
         System.debug('PF');
-        Integer[] opcoes = new Integer[]{};
-        ProfitMargin__c selecionado;
-        Integer[] melhor = new Integer[]{};
+        
+        
+        
         for (OrderItem iOrderItem:newOrderItems){
-            melhor.clear();
-            selecionado = null;
+            Integer[] mostSpecificOptions = new Integer[]{};
+            ProfitMargin__c mostSpecificObject = null;
             for (ProfitMargin__c iProfitMargin: relatedProductsProfitMap.get(iOrderItem.Product2Id)){
-                opcoes.clear();
+                Integer[] currentOptions = new Integer[]{};
                 if (iProfitMargin.Product__c != null){
-                    //quer dizer que eh relacao de produto!
-                    opcoes.add(1);
+                    
+                    currentOptions.add(1);
                 }
                 else{
-                    //quer dizer que eh relacao de hierarquia!
-                    opcoes.add(2);
+                    
+                    currentOptions.add(2);
                 }
                 if (iProfitMargin.Account__c != null){
-                    //quer dizer que eh para conta
+                    
                     if (iProfitMargin.Account__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountId){
-                        opcoes.add(1);
+                        currentOptions.add(1);
                     }
                 }
                 else{
                     if (iProfitMargin.AccountGroup__c == relatedOrdersMap.get(iOrderItem.OrderId).Account.AccountGroup__c){
-                        opcoes.add(2);
+                        currentOptions.add(2);
                     }
                 }
                 if(iProfitMargin.City__c != null){
-                    //quer dizer que tem cidade!
-                    if (iProfitMargin.City__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__c){//logo cidade bate
-                        opcoes.add(1);
+                    
+                    if (iProfitMargin.City__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__c){
+                        currentOptions.add(1);
                     }
                 }
                 else if(iProfitMargin.State__c != null){
-                    //quer dizer que tem estado!
-                    if (iProfitMargin.State__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__r.State__c){ //logo estado bate
-                        opcoes.add(2);
+                    
+                    if (iProfitMargin.State__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__r.State__c){ 
+                        currentOptions.add(2);
                     }
                 }
                 else if(iProfitMargin.Country__c != null){
-                    //quer dizer que tem pais!
-                    if (iProfitMargin.Country__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__r.State__r.Country__c){ //logo pais bate
-                        opcoes.add(3);
+                    
+                    if (iProfitMargin.Country__c == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__r.State__r.Country__c){ 
+                        currentOptions.add(3);
                     }
                 }
                 
-                if (opcoes.size()==3){
-                    if (selecionado == null){
-                        selecionado = iProfitMargin;
-                        melhor = opcoes;
+                if (currentOptions.size()==3){
+                    if (mostSpecificObject == null){
+                        mostSpecificObject = iProfitMargin;
+                        mostSpecificOptions = currentOptions;
                     }
                     else{
-                        if (opcoes[0]<melhor[0]){
-                            selecionado = iProfitMargin;
-                            melhor = opcoes;
+                        if (currentOptions[0]<mostSpecificOptions[0]){
+                            mostSpecificObject = iProfitMargin;
+                            mostSpecificOptions = currentOptions;
                         }
-                        else if (opcoes[0] == melhor[0] && opcoes[1]<melhor[1]){
-                            selecionado = iProfitMargin;
-                            melhor = opcoes;
+                        else if (currentOptions[0] == mostSpecificOptions[0] && currentOptions[1]<mostSpecificOptions[1]){
+                            mostSpecificObject = iProfitMargin;
+                            mostSpecificOptions = currentOptions;
                         }
-                        else if (opcoes[0] == melhor[0] && opcoes[1] == melhor[1] && opcoes[2] < melhor[2]){
-                            selecionado = iProfitMargin;
-                            melhor = opcoes;
+                        else if (currentOptions[0] == mostSpecificOptions[0] && currentOptions[1] == mostSpecificOptions[1] && currentOptions[2] < mostSpecificOptions[2]){
+                            mostSpecificObject = iProfitMargin;
+                            mostSpecificOptions = currentOptions;
                         }
                     }
                 }
 
             }
-            if (selecionado == null){
+            if (mostSpecificObject == null){
                 iOrderItem.addError('PM - Não está autorizada a venda deste produto devido a falta de parâmetros, entre em contato com o time de pricing.');            
             }
             else{
-                iOrderItem.MarginPercentage__c = selecionado.MarginPercentage__c;
-                iOrderItem.ProfitMargin__c = selecionado.Id;
+                iOrderItem.MarginPercentage__c = mostSpecificObject.MarginPercentage__c;
+                iOrderItem.ProfitMargin__c = mostSpecificObject.Id;
             }
         }
     }
@@ -293,10 +293,11 @@ public with sharing class OrderItemTriggerHelper {
         System.debug('PC');
         for (OrderItem iOrderItem:newOrderItems){
             for (PricebookEntry iPricebookEntry:relatedProductsCostMap.get(iOrderItem.Product2Id)){
-                iOrderItem.ProductCost__c = iPricebookEntry.UnitPrice;
+                iOrderItem.ProductCost__c = iPricebookEntry.UnitPrice; //there should be only 1 price per Product2, therefore it's a length 1 for loop
 
             }
         }
 
     }
+    
 }
