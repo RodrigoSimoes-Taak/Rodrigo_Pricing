@@ -67,7 +67,8 @@ public with sharing class OrderItemTriggerHelper {
         Shipping__c[] relatedShippings = [
             SELECT Value__c,Product__c,ProductHierarchy__c,City__c,State__c,Country__c 
             FROM Shipping__c 
-            WHERE (Product__c IN :relatedProducts OR ProductHierarchy__c IN :relatedHierarchyMap.keySet()) AND Status__c = 'Aprovado'];
+            WHERE (Product__c IN :relatedProducts OR ProductHierarchy__c IN :relatedHierarchyMap.keySet()) AND Status__c = 'Aprovado'
+            ORDER BY City__c NULLS LAST, Product__c NULLS LAST];
         System.debug(relatedShippings.size());
         for (Shipping__c iShipping:relatedShippings){
             System.debug(relatedShippings);
@@ -98,7 +99,8 @@ public with sharing class OrderItemTriggerHelper {
             SELECT ProductHierarchy__c,Product__c,City__c,State__c,Country__c,AccountGroup__c,Account__c,MarginPercentage__c
             FROM ProfitMargin__c 
             WHERE (Product__c IN :relatedProducts OR ProductHierarchy__c IN :relatedHierarchyMap.keySet()) 
-            AND Status__c = 'Aprovado'];
+            AND Status__c = 'Aprovado'
+            ORDER BY City__c NULLS LAST, Account__c NULLS LAST, Product__c NULLS LAST];
         
         for (ProfitMargin__c iProfitMargin:relatedMargins){
             if (iProfitMargin.Product__c != null){
@@ -306,7 +308,7 @@ public with sharing class OrderItemTriggerHelper {
         }
     }
     */
-    
+
     public static void handleSpecificity(OrderItem[] newOrderItems,String objectType){
         //possibly replace String objectType with an Enum, eventually
         //expected call would be handleSpecificity(newOrderItems,'Tax');
@@ -317,16 +319,19 @@ public with sharing class OrderItemTriggerHelper {
         
         Map<Id,SObject[]> relatedObjectsMap;
         Integer expectedSize;
+        Integer[] expectedBest;
         String field1;
         String field2;
         
         if (objectType == 'Margin'){
             relatedObjectsMap = relatedProductsProfitMap;
             expectedSize = 3;
+            expectedBest = new Integer[]{1,1,1};
         }
         else if (objectType == 'Shipping'){
             relatedObjectsMap = relatedProductsShippingMap;
             expectedSize = 2;
+            expectedBest = new Integer[]{1,1};
         }
         else if (objectType=='Tax'){ //special case
             System.debug('TX');
@@ -364,7 +369,6 @@ public with sharing class OrderItemTriggerHelper {
             SObject mostSpecificObject = null;
             for (SObject iObject: relatedObjectsMap.get(iOrderItem.Product2Id)){
                 Integer[] currentOptions = new Integer[]{};
-
                 if (iObject.get('Product__c') != null){
                     
                     currentOptions.add(1);
@@ -374,19 +378,7 @@ public with sharing class OrderItemTriggerHelper {
                     currentOptions.add(2);
                 }
 
-                if (objectType == 'Margin'){
-                    if (iObject.get('Account__c') != null){
-                        if (iObject.get('Account__c') == relatedOrdersMap.get(iOrderItem.OrderId).AccountId){
-                            currentOptions.add(1);
-                        }
-                    }
-                    else{
-                        if (iObject.get('AccountGroup__c') == relatedOrdersMap.get(iOrderItem.OrderId).Account.AccountGroup__c){
-                            currentOptions.add(2);
-                        }
-                    }
-
-                }
+                
                 if(iObject.get('City__c') != null){
                     
                     if (iObject.get('City__c') == relatedOrdersMap.get(iOrderItem.OrderId).AccountAddress__r.City__c){
@@ -405,28 +397,47 @@ public with sharing class OrderItemTriggerHelper {
                         currentOptions.add(3);
                     }
                 }
+                if (objectType == 'Margin'){ //since margin is the only one that requires account/AccountGroup
+                    if (iObject.get('Account__c') != null){
+                        if (iObject.get('Account__c') == relatedOrdersMap.get(iOrderItem.OrderId).AccountId){
+                            currentOptions.add(1);
+                        }
+                    }
+                    else{
+                        if (iObject.get('AccountGroup__c') == relatedOrdersMap.get(iOrderItem.OrderId).Account.AccountGroup__c){
+                            currentOptions.add(2);
+                        }
+                    }
+
+                }
 
 
                 if (currentOptions.size()==expectedSize){
-                    if (mostSpecificObject == null){
+                    if (currentOptions == expectedBest){//found the best possible case
+                        mostSpecificObject = iObject;
+                        mostSpecificOptions = currentOptions;
+                        System.debug('Break!');
+                        break;
+                    }
+                    else if (mostSpecificObject == null){//initial case
                         mostSpecificObject = iObject;
                         mostSpecificOptions = currentOptions;
                     }
-                    else{
+                    else{//comparison case
                         if (currentOptions[0]<mostSpecificOptions[0]){
                             mostSpecificObject = iObject;
                             mostSpecificOptions = currentOptions;
                         }
                         else if (expectedSize>1){
                             if (currentOptions[0] == mostSpecificOptions[0] && currentOptions[1]<mostSpecificOptions[1]){
-                            mostSpecificObject = iObject;
-                            mostSpecificOptions = currentOptions;
+                                mostSpecificObject = iObject;
+                                mostSpecificOptions = currentOptions;
                             }
                         }
                         else if (expectedSize>2){
                             if (currentOptions[0] == mostSpecificOptions[0] && currentOptions[1] == mostSpecificOptions[1] && currentOptions[2] < mostSpecificOptions[2]){
-                            mostSpecificObject = iObject;
-                            mostSpecificOptions = currentOptions;
+                                mostSpecificObject = iObject;
+                                mostSpecificOptions = currentOptions;
                             }
                         }
                     }
