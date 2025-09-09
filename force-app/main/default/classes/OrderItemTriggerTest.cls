@@ -61,6 +61,23 @@ private class OrderItemTriggerTest {
             contractsToInsert.add(new Contract(AccountId=accountsToInsert[i].Id,StartDate=Date.today(),Status='Draft',ContractTerm=12));
         }
         insert contractsToInsert;
+        PaymentCondition__c paymentToInsert = new PaymentCondition__c(Name='Crédito',Code__c='8763');
+        DistributionCenter__c distributionToInsert = new DistributionCenter__c(Name='Centro de Distr. SP',Code__c='7363');
+        ProductHierarchy__c hierarchyToInsert = new ProductHierarchy__c(Name='Padaria',Code__c='80085');
+        insert paymentToInsert;
+        insert distributionToInsert;
+        Order ordersToInsert = new Order(AccountId=accountsToInsert[0],PaymentCondition__c=paymentToInsert,DistributionCenter__c=distributionToInsert,
+            EffectiveDate=Date.today(),ContractId=contractsToInsert[0].Id,ShippingType='CIF',DeliveryDate__c=Date.today().addDays(1));//ainda falta argumentos!
+
+
+
+        insert hierarchyToInsert;
+        Product2[] productsToInsert = new Product2[]{};
+        productsToInsert.add(new Product2(Name='Produto1',ProductCode='11111',IsActive=true,ProductCost__c=10.0,ProductHierarchy__c=hierarchyToInsert));
+        productsToInsert.add(new Product2(Name='Produto2',ProductCode='22222',IsActive=true,ProductCost__c=15.0,ProductHierarchy__c=hierarchyToInsert));
+        insert productsToInsert;
+
+
 
 
         

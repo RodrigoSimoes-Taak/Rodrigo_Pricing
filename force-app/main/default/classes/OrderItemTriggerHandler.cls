@@ -34,7 +34,13 @@ public with sharing class OrderItemTriggerHandler {
 		String[] parameterList = new String[]{'Margin', 'Shipping', 'Tax', 'Cost'};
 
 		for (String iParameter:parameterList){
-			OrderItemTriggerHelper.handleSpecificity(this.newRecordList, iParameter);
+			OrderItem[] updatedRecordList = new OrderItem[]{};
+			for (OrderItem iOrderItem:this.newRecordList){
+				if (!iOrderItem.hasErrors()){
+					updatedRecordList.add(iOrderItem);
+				}
+			}
+			OrderItemTriggerHelper.handleSpecificity(updatedRecordList, iParameter);
 			
 		}
 			

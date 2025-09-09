@@ -305,17 +305,16 @@ public with sharing class OrderItemTriggerHelper {
             }
         }
     }
-
-
     */
+    
     public static void handleSpecificity(OrderItem[] newOrderItems,String objectType){
         //possibly replace String objectType with an Enum, eventually
         //expected call would be handleSpecificity(newOrderItems,'Tax');
-        /*
+        
         if (newOrderItems.isEmpty()){
             return;
         }
-        */
+        
         Map<Id,SObject[]> relatedObjectsMap;
         Integer expectedSize;
         String field1;
