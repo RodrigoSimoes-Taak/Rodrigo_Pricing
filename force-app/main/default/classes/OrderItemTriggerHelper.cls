@@ -428,13 +428,13 @@ public with sharing class OrderItemTriggerHelper {
                             mostSpecificObject = iObject;
                             mostSpecificOptions = currentOptions;
                         }
-                        else if (expectedSize>1){
+                        if (expectedSize>=2){
                             if (currentOptions[0] == mostSpecificOptions[0] && currentOptions[1]<mostSpecificOptions[1]){
                                 mostSpecificObject = iObject;
                                 mostSpecificOptions = currentOptions;
                             }
                         }
-                        else if (expectedSize>2){
+                        if (expectedSize>=3){
                             if (currentOptions[0] == mostSpecificOptions[0] && currentOptions[1] == mostSpecificOptions[1] && currentOptions[2] < mostSpecificOptions[2]){
                                 mostSpecificObject = iObject;
                                 mostSpecificOptions = currentOptions;
