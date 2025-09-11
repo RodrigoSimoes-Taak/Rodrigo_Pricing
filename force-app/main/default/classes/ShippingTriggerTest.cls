@@ -20,7 +20,7 @@
  * See the Apex Language Reference for more information about Testing and Code Coverage.
  */
 @isTest
-private class TaxTriggerTest {
+private class ShippingTriggerTest {
     @TestSetup
     static void makeData(){
         TestFactorySObject testFactory = TestFactorySObject.getInstance();
@@ -49,50 +49,48 @@ private class TaxTriggerTest {
         productsToInsert.add((Product2)testFactory.createSObject(new Product2(ProductHierarchy__c=productHierarchiesToInsert[0].Id)));
         insert productsToInsert;
 
-        Tax__c[] taxesToInsert = new Tax__c[]{};
-        taxesToInsert.add((Tax__c)testFactory.createSObject(new Tax__c(Product__c=productsToInsert[0].Id,DistributionCenter__c=distributionCentersToInsert[0].Id,State__c=statesToInsert[0].Id)));
-        
-        insert taxesToInsert;
+        Shipping__c[] shippingsToInsert = new Shipping__c[]{};
+        shippingsToInsert.add((Shipping__c)testFactory.createSObject(new Shipping__c(Product__c=productsToInsert[0].Id,
+        DistributionCenter__c=distributionCentersToInsert[0].Id,State__c=statesToInsert[0].Id)));
+        shippingsToInsert.add((Shipping__c)testFactory.createSObject(new Shipping__c(Product__c=productsToInsert[0].Id,
+        DistributionCenter__c=distributionCentersToInsert[0].Id,Country__c=countriesToInsert[0].Id)));
+        shippingsToInsert.add((Shipping__c)testFactory.createSObject(new Shipping__c(ProductHierarchy__c=productHierarchiesToInsert[0].Id,
+        DistributionCenter__c=distributionCentersToInsert[0].Id,City__c=citiesToInsert[0].Id)));
+        insert shippingsToInsert;
     }
     @isTest
-    static void successfulTest() {
-        Tax__c updatedTax = [SELECT Id, Name, State__c FROM Tax__c LIMIT 1];
-        States__c newState = new States__c(Name='TestState',NameShort__c='TS',Country__c=[SELECT Id FROM Country__c LIMIT 1].Id);
-        insert newState;
-        updatedTax.State__c = newState.Id;
-        update updatedTax;
+    static void updateTest() {
+        Shipping__c updatedShipping = [SELECT Id,Country__c,State__c FROM Shipping__c WHERE State__c != null LIMIT 1];
+        update updatedShipping;//should not error (no changes were made)
+        updatedShipping.State__c = null;
+        updatedShipping.Country__c = [SELECT Id FROM Country__c LIMIT 1].Id;
+        try{
+            update updatedShipping; //should error(outer duplicate)!
+            System.assert(false);
+        }
+        catch(Exception e){
+            System.assert(true);
+        }
     }
     @isTest
-    static void outerDuplicateTaxTest(){
-        Tax__c duplicateTax = new Tax__c(Name='TestName',State__c=[SELECT Id FROM States__c LIMIT 1].Id,Product__c=[SELECT Id FROM Product2 LIMIT 1].Id,
-        DistributionCenter__c=[SELECT Id FROM DistributionCenter__c LIMIT 1].Id);
+    static void innerDuplicate(){
+        Shipping__c[] shippingsToInsert = new Shipping__c[]{};
+        Product2 product = [SELECT Id FROM Product2 LIMIT 1];
+        DistributionCenter__c distributionCenter = [SELECT Id FROM DistributionCenter__c LIMIT 1];
+        City__c city = [SELECT Id FROM City__c LIMIT 1];
+        shippingsToInsert.add(new Shipping__c(Name='testname',Product__c=product.Id,Status__c='Aprovado',DistributionCenter__c=distributionCenter.Id,
+        City__c=city.Id));
+        shippingsToInsert.add(new Shipping__c(Name='testname',Product__c=product.Id,Status__c='Aprovado',DistributionCenter__c=distributionCenter.Id,
+        City__c=city.Id));
+        try{
+            insert shippingsToInsert;
+            System.assert(false);
+        }
+        catch(Exception e){
+            System.Assert(true);
+        }
+       
 
-        try{
-            insert duplicateTax;
-            System.assert(false);
-        }
-        catch(Exception e){
-            
-            System.assert(true);
-            
-            
-        }
-        
-    }
-    @isTest
-    static void innerDuplicateTaxTest(){
-        Tax__c[] duplicateTaxes = new Tax__c[]{};
-        duplicateTaxes.add(new Tax__c(Name='TestName2',State__c=[SELECT Id FROM States__c LIMIT 1].Id,Product__c=[SELECT Id FROM Product2 LIMIT 1].Id,
-        DistributionCenter__c=[SELECT Id FROM DistributionCenter__c LIMIT 1].Id));
-        duplicateTaxes.add(new Tax__c(Name='TestName3',State__c=[SELECT Id FROM States__c LIMIT 1].Id,Product__c=[SELECT Id FROM Product2 LIMIT 1].Id,
-        DistributionCenter__c=[SELECT Id FROM DistributionCenter__c LIMIT 1].Id));
-        try{
-            insert duplicateTaxes;
-            System.assert(false);
-        }
-        catch(Exception e){
-            System.assert(true);
-        }
-        
+
     }
 }

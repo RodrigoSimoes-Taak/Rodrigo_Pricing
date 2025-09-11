@@ -23,19 +23,8 @@
 private class OrderItemTriggerTest {
     @TestSetup
     static void makeData(){
-        //perguntar: Faz sentido deletar alguns records para testes?
-        //plano inicial:
-        //1 order
-        //1 products
-        //1 account
-        //1 accountaddress
-        //1 accountgroup
-        //1 producthierarchy
-        //1 impostos
-        //2 fretes (1 produto 1 hierarquia)
-        //2 margens (1 produto 1 hierarquia)
-
-        //!! Fazer orderitems NO TESTE, não no makedata!
+        
+        
         TestFactorySObject testFactory = TestFactorySObject.getInstance();
         Id priceBookId = TestFactorySObject.getStandardPricebookId();
         update new Pricebook2(Id=priceBookId);
@@ -120,58 +109,7 @@ private class OrderItemTriggerTest {
         PricebookEntry[] pricebookEntriesToInsert = new PricebookEntry[]{};
         pricebookEntriesToInsert.add((PricebookEntry) testFactory.createSObject(new PricebookEntry(Pricebook2Id=priceBookId,
         Product2Id=productsToInsert[0].Id,UnitPrice=productsToInsert[0].ProductCost__c)));
-        insert pricebookEntriesToInsert;
-
-        /*
-        //grupo de clientes
-        AccountGroup__c newAccountGroup = new AccountGroup__c(Name='Mercados');
-        insert newAccountGroup;
-        //criar contas
-        Account[] accountsToInsert = new Account[]{};
-        accountsToInsert.add(new Account(Name='Mercado1',AccountGroup__c=newAccountGroup.Id,CNPJ__c='11.111.111/1111-11'));
-        accountsToInsert.add(new Account(Name='Mercado2',AccountGroup__c=newAccountGroup.Id,CNPJ__c='11.111.111/1111-12'));
-        accountsToInsert.add(new Account(Name='Mercado3',AccountGroup__c=newAccountGroup.Id,CNPJ__c='11.111.111/1111-13'));
-
-        insert accountsToInsert;
-        //criar pais
-        Country__c newCountry = new Country__c (Name='Brasil',NameShort__c='BR');
-        insert newCountry;
-        //criar estado
-        States__c[] newStates = new States__c[]{};
-        newStates.add(new States__c(Name='Sao Paulo',NameShort__c='SP',Country__c=newCountry.Id));
-        newStates.add(new States__c(Name='Rio de Janeiro',NameShort__c='RJ',Country__c=newCountry.Id));
-        newStates.add(new States__c(Name='Minas Gerais',NameShort__c='MG',Country__c=newCountry.Id));
-        insert newStates;
-        //criar cidade
-        City__c[] newCities = new City__c[]{};
-        newCities.add(new City__c(Name='Sao Paulo',State__c=newStates[0].Id,IBGECode__c='11111'));
-        newCities.add(new City__c(Name='Rio de Janeiro',State__c=newStates[1].Id,IBGECode__c='22222'));
-        newCities.add(new City__c(Name='Belo Horizonte',State__c=newStates[2].Id,IBGECode__c='33333'));
-        insert newCities;
-        //criar enderecos
-        AccountAddress__c[] addressesToInsert = new AccountAddress__c[]{};
-        addressesToInsert.add(new AccountAddress__c(Name='Endereco1',Account__c=accountsToInsert[0].Id,City__c=newCities[0].Id,Code__c='11111-111',CEP__c='11111-111',Address__c='Rua 1',Neighborhood__c='Centro'));
-        addressesToInsert.add(new AccountAddress__c(Name='Endereco2',Account__c=accountsToInsert[1].Id,City__c=newCities[1].Id,Code__c='22222-222',CEP__c='22222-222',Address__c='Rua 2',Neighborhood__c='Centro'));
-        addressesToInsert.add(new AccountAddress__c(Name='Endereco3',Account__c=accountsToInsert[2].Id,City__c=newCities[2].Id,Code__c='33333-333',CEP__c='33333-333',Address__c='Rua 3',Neighborhood__c='Centro'));
-
-        insert addressesToInsert;
-        //criar contratos
-        Contract[] contractsToInsert = new Contract[]{};
-        for (Integer i = 0; i < 3; ++i){
-            contractsToInsert.add(new Contract(AccountId=accountsToInsert[i].Id,StartDate=Date.today(),Status='Draft',ContractTerm=12));
-        }
-        insert contractsToInsert;
-        PaymentCondition__c paymentToInsert = new PaymentCondition__c(Name='Crédito',Code__c='8763');
-        DistributionCenter__c distributionToInsert = new DistributionCenter__c(Name='Centro de Distr. SP',Code__c='7363');
-        ProductHierarchy__c hierarchyToInsert = new ProductHierarchy__c(Name='Padaria',Code__c='80085');
-        insert paymentToInsert;
-        insert distributionToInsert;
-        */
-       
-
-
-
-        
+        insert pricebookEntriesToInsert; 
     }
     @isTest
     static void successfulTest() {
@@ -236,8 +174,11 @@ private class OrderItemTriggerTest {
 
     }
     @isTest
-    static void bestParametersTest(){
-
+    static void updateTest(){
+        makeOrder();
+        OrderItem orderItem = [SELECT Id, UnitPrice FROM OrderItem LIMIT 1];
+        orderItem.UnitPrice = 100;
+        update orderItem;
     }
     static void makeOrder(){
         OrderItem[] orderItemsToInsert = new OrderItem[]{};
