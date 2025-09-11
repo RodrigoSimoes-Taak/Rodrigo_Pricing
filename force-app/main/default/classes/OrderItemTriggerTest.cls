@@ -114,6 +114,15 @@ private class OrderItemTriggerTest {
     @isTest
     static void successfulTest() {
         makeOrder();
+        OrderItem insertedOrderItem = [SELECT Id, Shipping__r.Product__c,Tax__c,ProfitMargin__r.Product__c FROM OrderItem LIMIT 1];
+        if (insertedOrderItem.Shipping__r.Product__c != null && insertedOrderItem.ProfitMargin__r.Product__c!= null){
+            
+            System.assert(true);
+        }
+        else{
+            System.assert(false);
+        }
+        
     }
     @isTest
     static void lackOfParametersTest(){
