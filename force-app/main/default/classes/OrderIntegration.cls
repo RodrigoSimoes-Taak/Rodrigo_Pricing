@@ -2,7 +2,29 @@
 global with sharing class OrderIntegration {
     
     
-
+    public class OrderResponse{
+        public OrderResponseContent[] response = new OrderResponseContent[]{};
+        public OrderResponse(Order[] newOrders){
+            for (Order iOrder:newOrders){
+                response.add(new OrderResponseContent(iOrder));
+            }
+        }
+    }
+    public class OrderResponseContent{
+        public String salesforceId;
+        public String externalCode;
+        public Boolean status;
+        public String errorMessage;
+        public String sObjectType;
+        public OrderResponseContent(Order newOrder){
+            salesforceId = newOrder.Id;
+            externalCode = newOrder.ExternalId__c;
+            status = false;
+            errorMessage = '';
+            sObjectType = 'Order';
+        }
+    }
+    
     public class OrderRequest {
         public OrderIN[] request;
     }
@@ -127,15 +149,9 @@ global with sharing class OrderIntegration {
         
         upsert newOrderItems;
 
-        //code to relate Codes with IDs using SOQL
-        
 
-        //upsert newOrders;
-        //code to relate orderItems with orders
-        //upsert newOrderItems;
-
-		String answer = ordersToIntegrate.toString();
-		return answer;
+		
+		return JSON.serialize(new OrderResponse(newOrders));
 	}
 }
     
