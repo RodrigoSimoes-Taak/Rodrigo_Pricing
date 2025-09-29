@@ -63,7 +63,9 @@ global with sharing class OrderIntegration {
         }
         for (OrderIN iOrderIN:ordersToIntegrate){ //TODO: add the rest of the fields!
             newOrders.add(new Order(PaymentCondition__c=iOrderIN.conditionCode, ContractId=relatedContractsMap.get(iOrderIN.clienteCode),
-            DistributionCenter__c= iOrderIN.distributionCenter, AccountAddress__c=iOrderIN.addressCode, EffectiveDate=iOrderIN.effectiveDate, DeliveryDate__c=iOrderIN.deliveryDate, ExternalId__c=iOrderIN.orderNumber, AccountId=iOrderIN.clienteCode, ShippingType__c=iOrderIN.freightType, Status='Draft'));
+            DistributionCenter__c= iOrderIN.distributionCenter, AccountAddress__c=iOrderIN.addressCode, 
+            EffectiveDate=iOrderIN.effectiveDate, DeliveryDate__c=iOrderIN.deliveryDate, ExternalId__c=iOrderIN.orderNumber, 
+            AccountId=iOrderIN.clienteCode, ShippingType__c=iOrderIN.freightType, Status='Draft'));
         }
         return newOrders;
     }
@@ -72,7 +74,9 @@ global with sharing class OrderIntegration {
         for (Integer i = 0; i < newOrders.size();++i){
             for (OrderItemIN iOrderItem:ordersToIntegrate[i].orderItems){
                 
-                newOrderItems.add(new OrderItem(ExternalId__c=iOrderItem.orderItemCode, Product2Id=iOrderItem.productCode, OrderId=newOrders[i].Id, Quantity=iOrderItem.quantity, UnitPrice=iOrderItem.unitPrice,ListPrice=iOrderItem.motorPrice,totvsItem__c=iOrderItem.totvsItem));
+                newOrderItems.add(new OrderItem(ExternalId__c=iOrderItem.orderItemCode, Product2Id=iOrderItem.productCode, 
+                OrderId=newOrders[i].Id, Quantity=iOrderItem.quantity, UnitPrice=iOrderItem.unitPrice,ListPrice=iOrderItem.motorPrice,
+                totvsItem__c=iOrderItem.totvsItem));
             }
         }
         return newOrderItems;
