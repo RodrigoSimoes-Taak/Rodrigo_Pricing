@@ -141,18 +141,36 @@ global with sharing class OrderIntegration {
             iOrder.distributionCenter = relatedDistributionCentersMap.get(iOrder.distributionCenter);
             iOrder.clienteCode = relatedAccountsMap.get(iOrder.clienteCode);
         }
-        
+        IntegrationLog__c log = new IntegrationLog__c(Name='LogSemTemplate');
         Order[] newOrders = convertOrder(ordersToIntegrate,relatedAccountsMap);
-
-        Database.upsert(newOrders,Order.externalId__c);
-
-
-        OrderItem[] orderItemsToDelete = [SELECT Id FROM OrderItem WHERE ExternalId__c IN :relatedOrderItemIds];
-        delete orderItemsToDelete;
-        OrderItem[] newOrderItems = convertOrderItem(ordersToIntegrate,newOrders);
+        try{
+            Database.upsert(newOrders,Order.externalId__c);
+            OrderItem[] orderItemsToDelete = [SELECT Id FROM OrderItem WHERE ExternalId__c IN :relatedOrderItemIds];
+            delete orderItemsToDelete;
+            //all remaining OrderItems related to the Orders should have DeletedProduct = true
+            String[] relatedOrderIds = new String[]{};
+            for (OrderIN iOrder:ordersToIntegrate){
+                relatedOrderIds.add(iOrder.orderNumber);
+            }
+            OrderItem[] newOrderItems = convertOrderItem(ordersToIntegrate,newOrders);
+            for (OrderItem iOrderItem:[SELECT Id,DeletedProduct__c FROM OrderItem WHERE Order.ExternalId__c IN :relatedOrderIds]){
+                iOrderItem.DeletedProduct__c = true;
+                newOrderItems.add(iOrderItem);
+            }
+            upsert newOrderItems;
+            log.ErrorMessage__c = '';
+            log.Status__c = 'Success';
+            log.ExecutionDate__c = Datetime.now();
+            insert log;
+        }
+        catch(Exception e){
+            log.ErrorMessage__c = e.getMessage();
+            log.Status__c = 'Error';
+            log.ExecutionDate__c = Datetime.now();
+            insert log;
+        }
         
-        upsert newOrderItems;
-
+        
 
 		
 		return JSON.serialize(new OrderResponse(newOrders));

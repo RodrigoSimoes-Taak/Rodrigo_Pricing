@@ -38,9 +38,9 @@ global with sharing class DataIntegrationFields {
 				ExternalId__c			= this.orderNumber,//OrderNumber
 				EffectiveDate			= this.effectiveDate,
 				Account					= new Account(ExternalId__c = this.clienteCode),//clientecode
-				PaymentCondition__c 	= [SELECT Id FROM PaymentCondition__c WHERE Code__c = :this.conditionCode LIMIT 1].Id,
-				DistributionCenter__c	= [SELECT Id FROM DistributionCenter__c WHERE Code__c = :this.distributionCenter LIMIT 1].Id,
-				AccountAddress__c 		= [SELECT Id FROM AccountAddress__c WHERE Code__c = :this.addressCode LIMIT 1].Id,
+				PaymentCondition__r 	= new PaymentCondition__c(Code__c=this.conditionCode),
+				DistributionCenter__r	= new DistributionCenter__c(Code__c=this.distributionCenter),
+				AccountAddress__r 		= new AccountAddress__c(Code__c=this.addressCode),
 				ShippingType__c 		= this.freightType,
 				DeliveryDate__c 		= this.deliveryDate,
 				Status 					='Draft'
@@ -52,12 +52,17 @@ global with sharing class DataIntegrationFields {
 			return new List<String>{
 				'ExternalId__c',
 				'EffectiveDate',
-				'Status'
+				'Status',
+				'ShippingType__c',
+				'DeliveryDate__c'
 			};
 		}
 		public List<String> getRequiredLookups() {
 			return new List<String>{
-				
+				'Account',
+				'PaymentCondition__r',
+				'DistributionCenter__r',
+				'AccountAddress__r'
 			};
 		}
 
@@ -110,7 +115,8 @@ global with sharing class DataIntegrationFields {
 		}
 		public List<String> getRequiredLookups() {
 			return new List<String>{
-				
+				'Order',
+				'Product2'
 			};
 		}
 
