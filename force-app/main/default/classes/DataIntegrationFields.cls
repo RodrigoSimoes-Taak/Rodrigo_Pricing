@@ -18,28 +18,26 @@ global with sharing class DataIntegrationFields {
 	}
 
 	global class OrderINData implements FieldData { // extends OrderBase
-		public String clienteCode;
+		public String accountCode;
+		public String orderCode;
+		public String status;
         public String addressCode; //AccountAddress
-        public String conditionCode; //payment condition
+        public String paymentCode; //payment condition
         public Date effectiveDate;
         public String freightType; 
-        public String distributionCenter; 
-        public String orderNumber;
+        public String distributionCenterCode; 
         public Date deliveryDate;
-        public Date deliveryDateERP;
-        public String status;
         public String obs;
-        public Integer priority;
 
 		public List<OrderItemINData> orderItems {get; set;}
 
 		public Order deserialize() {
 			return new Order(
-				ExternalId__c			= this.orderNumber,//OrderNumber
+				ExternalId__c			= this.orderCode,
 				EffectiveDate			= this.effectiveDate,
-				Account					= new Account(ExternalId__c = this.clienteCode),//clientecode
-				PaymentCondition__r 	= new PaymentCondition__c(Code__c=this.conditionCode),
-				DistributionCenter__r	= new DistributionCenter__c(Code__c=this.distributionCenter),
+				Account					= new Account(ExternalId__c = this.accountCode),//clientecode
+				PaymentCondition__r 	= new PaymentCondition__c(Code__c=this.paymentCode),
+				DistributionCenter__r	= new DistributionCenter__c(Code__c=this.distributionCenterCode),
 				AccountAddress__r 		= new AccountAddress__c(Code__c=this.addressCode),
 				ShippingType__c 		= this.freightType,
 				DeliveryDate__c 		= this.deliveryDate,
@@ -73,27 +71,27 @@ global with sharing class DataIntegrationFields {
 			return 'Id';
 		}
 		public String getExternalId() {
-			return this.orderNumber;
+			return this.orderCode;
 		}
 	}
 	global class OrderItemINData implements FieldDataChild { // extends OrderItemBase
 		public String id;
 		public String productCode;
-        public String orderitemCode;
+        public String itemCode;
         public Boolean totvsItem;
         public Date deliveryDate;
         public Decimal unitPrice;//manual price
-        public Decimal motorPrice;//CostPrice, check if it matches the pricebook value?
-        public Integer quantity;
+        public Decimal listPrice;//CostPrice, check if it matches the pricebook value?
+        public Decimal quantity;
 		public String orderExternalId;
         public String status;//??
 
 		public OrderItem deserialize() {
 			OrderItem orderItem = new OrderItem(
-				ExternalId__c	= this.orderItemCode,
+				ExternalId__c	= this.itemCode,
 				Quantity		= this.quantity,
 				UnitPrice		= this.unitPrice,
-				ListPrice		= this.motorPrice,
+				ListPrice		= this.listPrice,
 				totvsItem__c	= this.totvsItem
 			);
 

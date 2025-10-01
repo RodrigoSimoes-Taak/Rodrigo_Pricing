@@ -50,7 +50,7 @@ global with sharing class OrderIntegration {
         public Date deliveryDate;
         public Decimal unitPrice;//manual price
         public Decimal motorPrice;//CostPrice, check if it matches the pricebook value?
-        public Integer quantity;
+        public Decimal quantity;
         public String status;//??
     }
     public static Order[] convertOrder(OrderIN[] ordersToIntegrate,Map<String,Id> relatedAccountsMap){
