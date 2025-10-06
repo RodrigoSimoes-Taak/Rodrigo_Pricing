@@ -1,26 +1,35 @@
 public with sharing class CalloutOrder {
 	
-
-	public static IntegrationUtils.CalloutResponse processIntegration(Id orderId){
+	public static IntegrationUtils.CalloutResponse processIntegration(List<Id> orderId,String requestURL){
 
 		Order parentOrder = [SELECT Id, ExternalId__c, AccountId,PaymentCondition__r.Code__c,EffectiveDate,ShippingType__c,DistributionCenter__r.Code__c,
         AccountAddress__r.Code__c,DeliveryDate__c,Status,OrderNumber,
-         (SELECT Id,Product2.ExternalId__c,ExternalId__c,totvsItem__c,UnitPrice,ListPrice,Quantity,Order.ExternalId__c FROM OrderItems) FROM Order WHERE Id = :orderId];
-		
+         (SELECT Id,Product2.ExternalId__c,ExternalId__c,totvsItem__c,UnitPrice,ListPrice,Quantity,Order.ExternalId__c FROM OrderItems) FROM Order WHERE Id IN :orderId];
+
+		//get relevant credentials
+        AccessTokenCredential__c accessCredentials = [SELECT ClientId__c,Username__c,RequestURL__c,ClientSecret__c,Password__c,SecurityToken__c,
+        AccessURL__c FROM AccessTokenCredential__c WHERE RequestURL__c =:requestURL LIMIT 1];
 		List<Order> allOrders = new List<Order>{parentOrder};
 		
-		IntegrationUtils.CalloutResponse calloutResponse = sendOrder(allOrders);
+		IntegrationUtils.CalloutResponse calloutResponse = sendOrder(allOrders,accessCredentials);
 
 		if (calloutResponse.success) {
 			
 			ResponseParameters resp = (ResponseParameters) calloutResponse.parsedResponse;
 			
 			Map<String, Order> orderMap = new Map<String, Order>();
+            String orderExternalIds = '';
+
+            
+           
 
 			for (Order ord : allOrders) {
 				orderMap.put(ord.OrderNumber, ord);
+                orderExternalIds += orderExternalIds == '' ? ord.ExternalId__c : ', ' + ord.ExternalId__c;
 			}
-
+            String integrationLogId = IntegrationLog.createLog('Order',orderExternalIds,'Outbound',JSON.serialize(allOrders),JSON.serialize(calloutResponse),accessCredentials.RequestURL__c,false,false);
+            System.debug('Integration log id: '+integrationLogId);
+            if (integrationLogId != null) IntegrationLog.updateOrderWithIntegrationLogId(allOrders, integrationLogId, 'OUT');
 			List<Order> orderList = new List<Order>();
 
 			for (ResponseParametersWrapper respWrapper : resp.responses) {
@@ -47,50 +56,56 @@ public with sharing class CalloutOrder {
 		
 		return calloutResponse;
 	}
-    public static String getAccessToken(){
-        String username = '';
-        String password = '';
-        String clientId = '';
-        String clientSecret = '';
-        String accessUrl = 'https://login.Salesforce.com/services/oauth2/token';
-
-        HttpRequest req = new HttpRequest();
-        req.setEndpoint(accessUrl);
-        req.setMethod('POST');
-        req.setHeader('Content-Type','application/x-www-form-urlencoded');
-        req.setBody('grant_type=password' + '&client_id='+clientId + 
-            '&client_secret='+clientSecret + '&username='+username + '&password='+password);
-        Http http = new Http();
-        HttpResponse response = http.send(req);
-        return ((Map<String,String>)JSON.deserialize(response.getBody(), Map<String,String>.class)).get('access_token');
-
+    public static String getAccessToken(AccessTokenCredential__c accessCredentials){
+        
+        String username = accessCredentials.Username__c;
+        String password = accessCredentials.Password__c + accessCredentials.SecurityToken__c;
+        String clientId = accessCredentials.ClientId__c;
+        String clientSecret = accessCredentials.ClientSecret__c;
+        String accessUrl = accessCredentials.AccessURL__c;
+        String accesstoken = (String)Cache.Org.get(username.substringBefore('@'));
+        if (accesstoken != null){
+            System.debug('Cache hit! Returning cache access token!');
+            return accesstoken;
+        }
+        else{
+            System.debug('Cache miss! Getting a new access token!');
+            HttpRequest req = new HttpRequest();
+            req.setEndpoint(accessUrl);
+            req.setMethod('POST');
+            req.setHeader('Content-Type','application/x-www-form-urlencoded');
+            req.setBody('grant_type=password' + '&client_id='+clientId + 
+                '&client_secret='+clientSecret + '&username='+username + '&password='+password);
+            Http http = new Http();
+            HttpResponse response = http.send(req);
+            accesstoken = ((Map<String,String>)JSON.deserialize(response.getBody(), Map<String,String>.class)).get('access_token');
+            Cache.Org.put(username.substringBefore('@'), accesstoken, 7200);
+            return accesstoken;
+        }
     }
-	public static IntegrationUtils.CalloutResponse sendOrder(List<Order> orders) {
+	public static IntegrationUtils.CalloutResponse sendOrder(List<Order> orders,AccessTokenCredential__c accessCredentials) {
 			
 		List<RequestParameters> request = new List<RequestParameters>();
-
 		for (Order ord : orders) {
 			request.add(new RequestParameters(ord));
+
 		}
         Map<String,RequestParameters[]> requestMap = new Map<String,RequestParameters[]>();
         requestMap.put('request',request);
 		String payload = JSON.serialize(requestMap);
         System.debug('Payload:\n'+payload); //need to set a name to the list inside the json!!
 		//Metodo para busca de Access Token, depende de cada projeto, podendo estar presente dentro de uma custom settings ou relacionado com outra requisição.
-		String accessToken = getAccessToken();
+		String accessToken = getAccessToken(accessCredentials);
 		//Path geralmente cadastrado dentro de ua customSettings
-		String endpoint = (Test.isRunningTest() ? 'callout:HANA_Oncoprod/PrePedido_SFOut' : 'https://resilient-shark-cuvy0j-dev-ed.trailblaze.my.salesforce.com/services/apexrest/upsertOrder/*');
+		String endpoint = (Test.isRunningTest() ? 'callout:HANA_Oncoprod/PrePedido_SFOut' : accessCredentials.RequestURL__c);
 		Map<String, String> headersMap = new Map<String, String>();
 		headersMap.put('Content-type', 'application/json');
 		headersMap.put('Authorization', 'Bearer '+ accessToken);
 		
 		IntegrationUtils.RequestResponseObject responseObject = IntegrationUtils.executeCallout(endpoint, payload, headersMap);
-
+        HttpResponse response = responseObject.response;
 		if (responseObject.success) {
 
-			HttpResponse response = responseObject.response;
-
-			IntegrationUtils.WSLog('Pedido', 'OUTBOUND', response.getBody(), payload, false);
 			try {
 
 				List<ResponseParametersWrapper> responses = (List<ResponseParametersWrapper>) JSON.deserialize(response.getBody(), List<ResponseParametersWrapper>.class);
@@ -102,21 +117,14 @@ public with sharing class CalloutOrder {
 				return new IntegrationUtils.CalloutResponse(defaultErrorMessage);
 			}
 		} else {
-			IntegrationUtils.WSLog('Pedido', 'OUTBOUND', responseObject.exceptionObject.getMessage(), payload, true);
+			
 			return new IntegrationUtils.CalloutResponse(responseObject.exceptionObject.getMessage());
 		}
 	}
-    public class RequestParametersWrapper{
-        public RequestParameters[] request;
-
-        public RequestParametersWrapper(List<RequestParameters> request){
-            
-        }
-    }
 	public class RequestParameters {
 		public String accountCode;
-        public String addressCode; //AccountAddress
-        public String paymentCode; //payment condition
+        public String addressCode; 
+        public String paymentCode; 
         public Date effectiveDate;
         public String freightType; 
         public String distributionCenterCode; 
@@ -146,13 +154,11 @@ public with sharing class CalloutOrder {
 	}
 
 	public class OrderItemParameters {
-		//OrderItem Fields
-		//Example
 		public String productCode;
         public String itemCode;
         public Boolean totvsItem;
-        public Decimal unitPrice;//manual price
-        public Decimal listPrice;//CostPrice, check if it matches the pricebook value?
+        public Decimal unitPrice;
+        public Decimal listPrice;
         public Decimal quantity;
 		public String orderExternalId;
 		

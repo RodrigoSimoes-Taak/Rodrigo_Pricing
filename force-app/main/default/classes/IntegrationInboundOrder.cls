@@ -30,7 +30,7 @@ global with sharing class IntegrationInboundOrder {
 		String integrationLogId = IntegrationLog.createLog(
 			'Order', orderExternalIds, 'Inbound', JSON.serialize(request), JSON.serialize(orderResponseList), endpoint, hasError, hasDeleted
 		);
-		if (integrationLogId != null) updateOrderWithIntegrationLogId(orderToUpsertList, integrationLogId, 'IN');
+		if (integrationLogId != null) IntegrationLog.updateOrderWithIntegrationLogId(orderToUpsertList, integrationLogId, 'IN');
 
 		System.debug('orderResponseList => ' + orderResponseList);
 		return orderResponseList;
@@ -65,9 +65,16 @@ global with sharing class IntegrationInboundOrder {
 
 		// Upserting records
 		OrderItem[] alreadyExistingOrderItems = [SELECT Id, Order.ExternalId__c FROM OrderItem WHERE ExternalId__c IN :orderExternalIdToOrderItem.keySet()];
-		delete alreadyExistingOrderItems;
-		List<Database.UpsertResult> upsertResults = Database.upsert(orderItemToUpsertList, OrderItem.ExternalId__c, false);
-		IntegrationUtils.upsertChildRecords(upsertResults, responseMap, orderItemToUpsertList, orderExternalIdToOrderItem, OrderItem.ExternalId__c);
+		try{
+			delete alreadyExistingOrderItems;
+			List<Database.UpsertResult> upsertResults = Database.upsert(orderItemToUpsertList, OrderItem.ExternalId__c, false);
+			IntegrationUtils.upsertChildRecords(upsertResults, responseMap, orderItemToUpsertList, orderExternalIdToOrderItem, OrderItem.ExternalId__c);
+		}
+		catch(Exception e){
+			System.debug('Error updating OrderItems: ' + e.getMessage());
+		}
+		
+		
 
 		return responseMap;
 	}
@@ -136,16 +143,5 @@ global with sharing class IntegrationInboundOrder {
 		return hasError;
 	}
 
-	public static void updateOrderWithIntegrationLogId(List<Order> orderList, String integrationLogId, String integrationType) {
-		List<Order> orderUpdateList = new List<Order>();
-
-		for (Order order : [SELECT Id, IntegrationLogInbound__c, IntegrationLogOutbound__c FROM Order WHERE Id IN: orderList]) {
-			if (integrationType == 'IN') order.IntegrationLogInbound__c = integrationLogId;
-			else order.IntegrationLogOutbound__c = integrationLogId;
-
-			orderUpdateList.add(order);
-		}
-
-		if (!orderUpdateList.isEmpty()) update orderUpdateList;
-	}
+	
 }

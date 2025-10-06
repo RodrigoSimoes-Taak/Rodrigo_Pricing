@@ -17,12 +17,12 @@ global with sharing class DataIntegrationFields {
 		SObject deserialize();
 	}
 
-	global class OrderINData implements FieldData { // extends OrderBase
+	global class OrderINData implements FieldData { 
 		public String accountCode;
 		public String orderCode;
 		public String status;
-        public String addressCode; //AccountAddress
-        public String paymentCode; //payment condition
+        public String addressCode; 
+        public String paymentCode; 
         public Date effectiveDate;
         public String freightType; 
         public String distributionCenterCode; 
@@ -35,7 +35,7 @@ global with sharing class DataIntegrationFields {
 			return new Order(
 				ExternalId__c			= this.orderCode,
 				EffectiveDate			= this.effectiveDate,
-				Account					= new Account(ExternalId__c = this.accountCode),//clientecode
+				Account					= new Account(ExternalId__c = this.accountCode),
 				PaymentCondition__r 	= new PaymentCondition__c(Code__c=this.paymentCode),
 				DistributionCenter__r	= new DistributionCenter__c(Code__c=this.distributionCenterCode),
 				AccountAddress__r 		= new AccountAddress__c(Code__c=this.addressCode),
@@ -74,17 +74,17 @@ global with sharing class DataIntegrationFields {
 			return this.orderCode;
 		}
 	}
-	global class OrderItemINData implements FieldDataChild { // extends OrderItemBase
+	global class OrderItemINData implements FieldDataChild { 
 		public String id;
 		public String productCode;
         public String itemCode;
         public Boolean totvsItem;
         public Date deliveryDate;
-        public Decimal unitPrice;//manual price
-        public Decimal listPrice;//CostPrice, check if it matches the pricebook value?
+        public Decimal unitPrice;
+        public Decimal listPrice;
         public Decimal quantity;
 		public String orderExternalId;
-        public String status;//??
+        public String status;
 
 		public OrderItem deserialize() {
 			OrderItem orderItem = new OrderItem(

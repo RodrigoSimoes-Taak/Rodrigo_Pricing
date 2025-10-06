@@ -30,8 +30,8 @@ global with sharing class OrderIntegration {
     }
     public class OrderIN{
         public String clienteCode;
-        public String addressCode; //AccountAddress
-        public String conditionCode; //payment condition
+        public String addressCode; 
+        public String conditionCode; 
         public Date effectiveDate;
         public String freightType; 
         public String distributionCenter; 
@@ -48,20 +48,19 @@ global with sharing class OrderIntegration {
         public String orderitemCode;
         public Boolean totvsItem;
         public Date deliveryDate;
-        public Decimal unitPrice;//manual price
-        public Decimal motorPrice;//CostPrice, check if it matches the pricebook value?
+        public Decimal unitPrice;
+        public Decimal motorPrice;
         public Decimal quantity;
-        public String status;//??
+        public String status;
     }
     public static Order[] convertOrder(OrderIN[] ordersToIntegrate,Map<String,Id> relatedAccountsMap){
         Order[] newOrders = new Order[]{};
-        //relate OrderIN fields with Order fields!
         Contract[] relatedContractsQueryResult = [SELECT Id,AccountId FROM Contract WHERE AccountId IN :relatedAccountsMap.values()];
         Map<Id,Id> relatedContractsMap = new Map<Id,Id>();
         for (Contract iContract: relatedContractsQueryResult){
             relatedContractsMap.put(iContract.AccountId,iContract.Id);
         }
-        for (OrderIN iOrderIN:ordersToIntegrate){ //TODO: add the rest of the fields!
+        for (OrderIN iOrderIN:ordersToIntegrate){ 
             newOrders.add(new Order(PaymentCondition__c=iOrderIN.conditionCode, ContractId=relatedContractsMap.get(iOrderIN.clienteCode),
             DistributionCenter__c= iOrderIN.distributionCenter, AccountAddress__c=iOrderIN.addressCode, 
             EffectiveDate=iOrderIN.effectiveDate, DeliveryDate__c=iOrderIN.deliveryDate, ExternalId__c=iOrderIN.orderNumber, 

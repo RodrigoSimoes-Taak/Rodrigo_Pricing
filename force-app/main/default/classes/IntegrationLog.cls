@@ -51,6 +51,18 @@ public with sharing class IntegrationLog {
 			HasDeleted__c = hasDeleted
 		);
 	}
+	public static void updateOrderWithIntegrationLogId(List<Order> orderList, String integrationLogId, String integrationType) {
+		List<Order> orderUpdateList = new List<Order>();
+
+		for (Order order : [SELECT Id, IntegrationLogInbound__c, IntegrationLogOutbound__c FROM Order WHERE Id IN: orderList]) {
+			if (integrationType == 'IN') order.IntegrationLogInbound__c = integrationLogId;
+			else order.IntegrationLogOutbound__c = integrationLogId;
+
+			orderUpdateList.add(order);
+		}
+
+		if (!orderUpdateList.isEmpty()) update orderUpdateList;
+	}
 
 	@TestVisible
 	private static Id createAttachment(String recordId, String integrationName, String inOrOut, String logName, String timeAsString, String payload){
