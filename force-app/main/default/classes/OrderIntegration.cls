@@ -28,7 +28,7 @@ global with sharing class OrderIntegration {
         public Decimal listPrice;
         public Decimal quantity;
     }
-    public static List<Order> convertOrder(List<OrderIN> ordersToIntegrate,Map<String,Id> relatedAccountsMap){
+    public static List<Order> convertOrder(List<OrderIN> ordersToIntegrate,Map<String,Id> relatedAccountsMap,Map<String,List<DataIntegration.Response>> responseMap){
         List<Order> newOrders = new List<Order>();
         List<Contract> relatedContractsQueryResult = [SELECT Id,AccountId FROM Contract WHERE AccountId IN :relatedAccountsMap.values()];
         Map<Id,Id> relatedContractsMap = new Map<Id,Id>();
@@ -36,22 +36,68 @@ global with sharing class OrderIntegration {
             relatedContractsMap.put(iContract.AccountId,iContract.Id);
         }
         for (OrderIN iOrderIN:ordersToIntegrate){ 
-            newOrders.add(new Order(PaymentCondition__c=iOrderIN.paymentCode, ContractId=relatedContractsMap.get(iOrderIN.accountCode),
-            DistributionCenter__c= iOrderIN.distributionCenterCode, AccountAddress__c=iOrderIN.addressCode, 
-            EffectiveDate=iOrderIN.effectiveDate, DeliveryDate__c=iOrderIN.deliveryDate, ExternalId__c=iOrderIN.orderCode, 
-            AccountId=iOrderIN.accountCode, ShippingType__c=iOrderIN.freightType, Status='Draft',Observations__c=iOrderIN.obs));
+            String errorMessage = 'The following fields have errors: ';
+            Boolean hasNulls = false;
+            if(iOrderIN.paymentCode == null){
+                if (!hasNulls){
+                    hasNulls = true;
+                }
+                
+                errorMessage += 'PaymentCode ';
+            } 
+            if(iOrderIN.distributionCenterCode == null){
+                if (!hasNulls){
+                    hasNulls = true;
+                }
+                errorMessage += 'DistributionCenterCode ';
+            } 
+            if (iOrderIN.addressCode == null){
+                if (!hasNulls){
+                    hasNulls = true;
+                }
+                errorMessage += 'AddressCode ';
+            }
+            if(iOrderIN.accountCode == null){
+                if (!hasNulls){
+                    hasNulls = true;
+                }
+                errorMessage += 'AccountCode ';
+            }
+            if (hasNulls){
+                responseMap.get('Order').add(new DataIntegration.Response(null,iOrderIN.orderCode,errorMessage,'Order'));
+            }
+            else{
+                newOrders.add(new Order(PaymentCondition__c=iOrderIN.paymentCode, ContractId=relatedContractsMap.get(iOrderIN.accountCode),
+                DistributionCenter__c= iOrderIN.distributionCenterCode, AccountAddress__c=iOrderIN.addressCode, 
+                EffectiveDate=iOrderIN.effectiveDate, DeliveryDate__c=iOrderIN.deliveryDate, ExternalId__c=iOrderIN.orderCode, 
+                AccountId=iOrderIN.accountCode, ShippingType__c=iOrderIN.freightType, Status='Novo',Observations__c=iOrderIN.obs));
+            }
+            
         }
         return newOrders;
     }
-    public static List<OrderItem> convertOrderItem(List<OrderIN> ordersToIntegrate,List<Order> newOrders){
+    public static List<OrderItem> convertOrderItem(List<OrderIN> ordersToIntegrate,List<Order> newOrders,List<Database.UpsertResult> orderUpsertResults, 
+    Map<String,List<DataIntegration.Response>> responseMap){
+
         List<OrderItem> newOrderItems = new List<OrderItem>();
         for (Integer i = 0; i < newOrders.size();++i){
-            for (OrderItemIN iOrderItem:ordersToIntegrate[i].orderItems){
-                //System.debug('ProductCode debug: '+iOrderItem.productCode);
-                newOrderItems.add(new OrderItem(ExternalId__c=iOrderItem.itemCode, Product2Id=iOrderItem.productCode, 
-                OrderId=newOrders[i].Id, Quantity=iOrderItem.quantity, UnitPrice=iOrderItem.unitPrice,ListPrice=iOrderItem.listPrice,
-                totvsItem__c=iOrderItem.totvsItem));
+            if (orderUpsertResults[i].isSuccess()){
+                for (OrderItemIN iOrderItem:ordersToIntegrate[i].orderItems){
+                    //System.debug('ProductCode debug: '+iOrderItem.productCode);
+                    if (iOrderItem.productCode == null){
+                        
+                        responseMap.get('OrderItem').add(new DataIntegration.Response(null,iOrderItem.itemCode,
+                            'No Product2Id found for OrderItem with ExternalId: '+iOrderItem.itemCode+' \n','OrderItem'));
+                    }
+                    else{
+                        newOrderItems.add(new OrderItem(ExternalId__c=iOrderItem.itemCode, Product2Id=iOrderItem.productCode, 
+                            OrderId=newOrders[i].Id, Quantity=iOrderItem.quantity, UnitPrice=iOrderItem.unitPrice,ListPrice=iOrderItem.listPrice,
+                            totvsItem__c=iOrderItem.totvsItem));
+                    }
+                    
+                }
             }
+            
         }
         return newOrderItems;
     }
@@ -129,11 +175,15 @@ global with sharing class OrderIntegration {
             responseMap.put('Order',new List<DataIntegration.Response>());
             responseMap.put('OrderItem',new List<DataIntegration.Response>());
 
-            List<Order> newOrders = convertOrder(ordersToIntegrate,relatedAccountsMap);
+            List<Order> newOrders = convertOrder(ordersToIntegrate,relatedAccountsMap,responseMap);
+            if (newOrders.isEmpty()){
+                IntegrationLog.createLog('Order', externalIdList, 'Inbound', JSON.serialize(originalOrders), JSON.serialize(responseMap), endpoint, true, false);
+                return responseMap;
+            }
             Boolean hasAnyErrors = false;
             
-            List<Database.UpsertResult> orderUpsertResults = Database.upsert(newOrders,Order.externalId__c,false);
-            Set<String> successfulOrderUpserts = new Set<String>();
+            List<Database.UpsertResult> orderUpsertResults = Database.upsert(newOrders,Order.ExternalId__c,false);
+            Set<String> successfulOrderUpsertExternalIds = new Set<String>();
             for (Integer i = 0; i < orderUpsertResults.size(); i++){
                 String errorMessage = '';
                 if (!orderUpsertResults[i].isSuccess()){
@@ -142,25 +192,30 @@ global with sharing class OrderIntegration {
                     }
                     
                     for (Database.Error iError: orderUpsertResults[i].getErrors()){
-                        errorMessage += iError.getMessage() + '\n';
+                        errorMessage += iError.getMessage() + ' \n';
                     }
+                }
+                else{
+                    successfulOrderUpsertExternalIds.add(newOrders[i].ExternalId__c);
                 }
                 responseMap.get('Order').add(new DataIntegration.Response(orderUpsertResults[i].getId(),newOrders[i].ExternalId__c,errorMessage,'Order'));
                 
             }
-            List<OrderItem> orderItemsToDelete = [SELECT Id FROM OrderItem WHERE ExternalId__c IN :relatedOrderItemIds];
-            delete orderItemsToDelete; //deletes all OrderItems that were in the request, since they may need to have their listprice updated
             
-            List<OrderItem> newOrderItems = convertOrderItem(ordersToIntegrate,newOrders);
-            for (OrderItem iOrderItem:newOrderItems){
-                externalIdList += iOrderItem.ExternalId__c + ',';
+            
+            List<OrderItem> orderItemsToDelete = [SELECT Id FROM OrderItem WHERE Order.ExternalId__c IN :successfulOrderUpsertExternalIds];
+            delete orderItemsToDelete; //deletes all OrderItems related to successful Order inserts
+            
+            List<OrderItem> newOrderItems = convertOrderItem(ordersToIntegrate,newOrders,orderUpsertResults,responseMap);
+            
+            for (Integer i = 0; i < newOrderItems.size();++i){
+                externalIdList += newOrderItems[i].ExternalId__c + ',';
                 
-                if (iOrderItem.Product2Id == null){
-                    System.debug('Product2: '+iOrderItem.Product2Id);
-                }
             }
-            //all remaining OrderItems related to the Orders should have DeletedProduct = true, since they're not included in the callout!
+            
             Boolean hasDeleted = false;
+            /*
+            //all remaining OrderItems related to the Orders should have DeletedProduct = true, since they're not included in the callout!
             for (OrderItem iOrderItem:[SELECT Id,DeletedProduct__c,ExternalId__c FROM OrderItem WHERE Order.ExternalId__c IN :relatedOrderExternalIds]){ //sets deletedProduct to true
                 if (!hasDeleted){
                     hasDeleted = true;
@@ -169,10 +224,11 @@ global with sharing class OrderIntegration {
                 iOrderItem.DeletedProduct__c = true;
                 newOrderItems.add(iOrderItem);
             }
+            */
 
             
             
-            List<Database.UpsertResult> orderItemsUpsertResults = Database.upsert(newOrderItems,OrderItem.ExternalId__c,false);
+            List<Database.SaveResult> orderItemsUpsertResults = Database.insert(newOrderItems,false);
             for (Integer i = 0;i < orderItemsUpsertResults.size();++i){ 
                 String errorMessage = '';
                 if (!orderItemsUpsertResults[i].isSuccess()){
@@ -182,8 +238,9 @@ global with sharing class OrderIntegration {
                     }
                     
                     for (Database.Error iError: orderItemsUpsertResults[i].getErrors()){
-                        errorMessage += iError.getMessage() + '\n';
+                        errorMessage += iError.getMessage() + ' \n';
                     }
+                    
                 }
                 responseMap.get('OrderItem').add(new DataIntegration.Response(orderItemsUpsertResults[i].getId(),newOrderItems[i].ExternalId__c,errorMessage,'OrderItem'));
             }

@@ -1,56 +1,63 @@
 public with sharing class OrderCallout {
-
-    public static void calloutViaOrderId(List<Id> orderIdList){
+    
+    public static void calloutViaOrderIdList(List<Id> orderIdList){
         List<Order> relatedOrderList = [SELECT Id,Account.ExternalId__c,AccountAddress__r.Code__c,PaymentCondition__r.Code__c,EffectiveDate,ShippingType__c,
-        DistributionCenter__r.Code__c,ExternalId__c,DeliveryDate__c,Status,IntegrationLogOutbound__c,
-        (SELECT Id,Product2.ExternalId__c,totvsItem__c,ExternalId__c,UnitPrice,ListPrice,Quantity FROM OrderItems) 
+        DistributionCenter__r.Code__c,OrderNumber,DeliveryDate__c,Status,IntegrationLogOutbound__c,
+        (SELECT Id,Product2.ExternalId__c,totvsItem__c,ExternalId__c,UnitPrice,ListPrice,Quantity FROM OrderItems WHERE DeletedProduct__c = false) 
         FROM Order 
         WHERE Id IN :orderIdList];
         Map<String,List<OrderIN>> requestMap = new Map<String,List<OrderIN>>();
+        Set<String> relatedOrderExternalIds = new Set<String>();
         requestMap.put('request', new List<OrderIN>());
         for (Order iOrder:relatedOrderList){
             requestMap.get('request').add(new OrderIN(iOrder));
         }
         System.debug(JSON.serialize(requestMap));
+        String requestURL = 'callout:OrgCarlos/services/apexrest/upsertOrder/*';
+        HttpResponse response = IntegrationUtils.sendRequest(requestMap,requestURL);
         
-
-
-
-
-
-        String requestURL = 'callout:SelfOrgNamedCred/services/apexrest/orderInbound';
-        HttpRequest request = new HttpRequest();
-        request.setBody(JSON.serialize(requestMap));
-        request.setEndpoint(requestURL);
-        request.setMethod('POST');
-        String responseBody;
-        HttpResponse response = new Http().send(request);
-        if (response.getStatusCode() == 200){
-            responseBody = response.getBody();
-            System.debug(responseBody);
-        }
-        else{
-            System.debug('Error! '+response.getStatusCode());
-        }
-        Map<String,List<DataIntegration.Response>> inboundResponse = (Map<String,List<DataIntegration.Response>>)JSON.deserialize(responseBody, 
-            Map<String,List<DataIntegration.Response>>.class);
-        String externalIds = '';
+        String logId;
+        
+        String responseBody = response.getBody();
         Boolean hasAnyError = false;
-        for (List<DataIntegration.Response> iResponseList:inboundResponse.values()){
-            for (DataIntegration.Response iResponse:iResponseList){
-                if (iResponse.hasError == true && !hasAnyError){
-                    hasAnyError = true; 
-                }
-                externalIds+=iResponse.externalCode+',';
-            }
+        if (IntegrationUtils.isResponseOk(response)){
             
+            System.debug(responseBody);
+            try{
+                Map<String,List<DataIntegration.Response>> inboundResponse = (Map<String,List<DataIntegration.Response>>)JSON.deserialize(responseBody, 
+                Map<String,List<DataIntegration.Response>>.class);
+                String externalIdsFromResponse = '';
+                for (List<DataIntegration.Response> iResponseList:inboundResponse.values()){
+                    for (DataIntegration.Response iResponse:iResponseList){
+                        if (iResponse.hasError == true && !hasAnyError){
+                            hasAnyError = true; 
+                        }
+                        externalIdsFromResponse+=iResponse.externalCode+',';
+                    }
+                }
+                logId = IntegrationLog.createLog('Order', externalIdsFromResponse, 'Outbound', JSON.serialize(requestMap), JSON.serialize(inboundResponse) , requestURL, hasAnyError, false);//hasDeleted doesnt make much sense here
+            }
+            catch(Exception e){
+                hasAnyError = true;
+                System.debug('Could not parse response, dumping raw '+responseBody);
+                //response body could not be converted properly, so we cannot catch errors! Therefore, it errors out
+                logId = IntegrationLog.createLog('Order', '', 'Outbound', JSON.serialize(requestMap), 'Error '+e.getMessage()+' '+responseBody, requestURL, hasAnyError, false); 
+            }
         }
-        
-        String logId = IntegrationLog.createLog('Order', externalIds, 'Outbound', JSON.serialize(requestMap), JSON.serialize(inboundResponse) , requestURL, hasAnyError, false);//hasDeleted doesnt make much sense here
+        else{//means an error happened in the response, which will likely return no useful log, so everything related should be considered to have error'd
+            System.debug('Error! '+response.getStatusCode()+'response: '+responseBody);
+            hasAnyError = true;
+            logId = IntegrationLog.createLog('Order', '', 'Outbound', JSON.serialize(requestMap),'Error '+response.getStatusCode()+' '+responseBody, requestURL, hasAnyError, false);
+            System.debug('Teste3');
+        }
         for (Order iOrder : relatedOrderList){
             iOrder.IntegrationLogOutbound__c = logId;
+            if (hasAnyError) iOrder.Status = 'Erro De Integração';
+            else iOrder.Status = 'Integrado';
         }
         update relatedOrderList;
+       
+        
     }
     public class OrderIN{
         public String accountCode;
@@ -71,9 +78,9 @@ public with sharing class OrderCallout {
             this.effectiveDate = orderToConvert.EffectiveDate;
             this.freightType = orderToConvert.ShippingType__c;
             this.distributionCenterCode = orderToConvert.DistributionCenter__r.Code__c;
-            this.orderCode = orderToConvert.ExternalId__c;
+            this.orderCode = orderToConvert.OrderNumber;
             this.deliveryDate = orderToConvert.DeliveryDate__c;
-            this.status = orderToConvert.Status;
+            this.status = 'Draft'; //mudar depois!
             this.obs = 'Callout!';
             for (OrderItem iOrderItem:orderToConvert.OrderItems){
                 this.orderItems.add(new OrderItemIN(iOrderItem));
