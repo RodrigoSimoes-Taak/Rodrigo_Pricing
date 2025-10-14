@@ -13,20 +13,21 @@ public with sharing class OrderCallout {
             requestMap.get('request').add(new OrderIN(iOrder));
         }
         System.debug(JSON.serialize(requestMap));
-        String requestURL = 'callout:OrgCarlos/services/apexrest/upsertOrder/*';
+        String requestURL = 'callout:OrgLucas/services/apexrest/upsertOrder/*';
         HttpResponse response = IntegrationUtils.sendRequest(requestMap,requestURL);
         
         String logId;
         
         String responseBody = response.getBody();
         Boolean hasAnyError = false;
+        String externalIdsFromResponse = '';
         if (IntegrationUtils.isResponseOk(response)){
             
             System.debug(responseBody);
             try{
                 Map<String,List<DataIntegration.Response>> inboundResponse = (Map<String,List<DataIntegration.Response>>)JSON.deserialize(responseBody, 
                 Map<String,List<DataIntegration.Response>>.class);
-                String externalIdsFromResponse = '';
+                
                 for (List<DataIntegration.Response> iResponseList:inboundResponse.values()){
                     for (DataIntegration.Response iResponse:iResponseList){
                         if (iResponse.hasError == true && !hasAnyError){
@@ -38,16 +39,34 @@ public with sharing class OrderCallout {
                 logId = IntegrationLog.createLog('Order', externalIdsFromResponse, 'Outbound', JSON.serialize(requestMap), JSON.serialize(inboundResponse) , requestURL, hasAnyError, false);//hasDeleted doesnt make much sense here
             }
             catch(Exception e){
-                hasAnyError = true;
-                System.debug('Could not parse response, dumping raw '+responseBody);
-                //response body could not be converted properly, so we cannot catch errors! Therefore, it errors out
-                logId = IntegrationLog.createLog('Order', '', 'Outbound', JSON.serialize(requestMap), 'Error '+e.getMessage()+' '+responseBody, requestURL, hasAnyError, false); 
+                System.debug('Response not using Maps!');
+                try{
+                    List<DataIntegration.Response> inboundResponse = (List<DataIntegration.Response>)JSON.deserialize(responseBody, 
+                        List<DataIntegration.Response>.class);
+                        
+                        for (DataIntegration.Response iResponse:inboundResponse){
+                            if (iResponse.hasError == true && !hasAnyError){
+                                hasAnyError = true; 
+                            }
+                            externalIdsFromResponse+=iResponse.externalCode+',';
+                        }
+                    
+                    logId = IntegrationLog.createLog('Order', externalIdsFromResponse, 'Outbound', JSON.serialize(requestMap), JSON.serialize(inboundResponse) , requestURL, hasAnyError, false);//hasDeleted doesnt make much sense here
+                    
+                }
+                catch(Exception e2){
+                    hasAnyError = true;
+                    System.debug('Could not parse response, dumping raw '+responseBody);
+                    //response body could not be converted properly, so we cannot catch errors! Therefore, it errors out
+                    logId = IntegrationLog.createLog('Order', externalIdsFromResponse, 'Outbound', JSON.serialize(requestMap), 'Error '+e.getMessage()+' '+responseBody, requestURL, hasAnyError, false); 
+                }
+                
             }
         }
         else{//means an error happened in the response, which will likely return no useful log, so everything related should be considered to have error'd
             System.debug('Error! '+response.getStatusCode()+'response: '+responseBody);
             hasAnyError = true;
-            logId = IntegrationLog.createLog('Order', '', 'Outbound', JSON.serialize(requestMap),'Error '+response.getStatusCode()+' '+responseBody, requestURL, hasAnyError, false);
+            logId = IntegrationLog.createLog('Order', externalIdsFromResponse, 'Outbound', JSON.serialize(requestMap),'Error '+response.getStatusCode()+' '+responseBody, requestURL, hasAnyError, false);
             System.debug('Teste3');
         }
         for (Order iOrder : relatedOrderList){
@@ -58,6 +77,11 @@ public with sharing class OrderCallout {
         update relatedOrderList;
        
         
+    }
+    @InvocableMethod
+    public static void invokeCalloutIntegration(List<Id> orderIdList){
+        System.debug('Order Send to callout button OrderList: '+orderIdList);
+        OrderTriggerHelper.sendOrdersToCallout(orderIdList);
     }
     public class OrderIN{
         public String accountCode;

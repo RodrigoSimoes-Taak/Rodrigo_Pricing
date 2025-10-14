@@ -28,7 +28,7 @@ public with sharing class OrderTriggerHandler {
 		this.newRecordMap = newRecordMap;
 	}
 	public void beforeUpdate() {
-        OrderTriggerHelper.handleUpdateOrder(this.newRecordList,this.oldRecordMap);
+        OrderTriggerHelper.handleUpdateOrder(this.newRecordList);
 	}
 	
 }
