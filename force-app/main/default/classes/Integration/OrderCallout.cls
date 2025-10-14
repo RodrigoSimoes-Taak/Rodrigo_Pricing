@@ -38,6 +38,7 @@ public with sharing class OrderCallout {
                 }
                 logId = IntegrationLog.createLog('Order', externalIdsFromResponse, 'Outbound', JSON.serialize(requestMap), JSON.serialize(inboundResponse) , requestURL, hasAnyError, false);//hasDeleted doesnt make much sense here
             }
+            /*
             catch(Exception e){
                 System.debug('Response not using Maps!');
                 try{
@@ -53,15 +54,15 @@ public with sharing class OrderCallout {
                     
                     logId = IntegrationLog.createLog('Order', externalIdsFromResponse, 'Outbound', JSON.serialize(requestMap), JSON.serialize(inboundResponse) , requestURL, hasAnyError, false);//hasDeleted doesnt make much sense here
                     
-                }
+                }*/
                 catch(Exception e2){
                     hasAnyError = true;
                     System.debug('Could not parse response, dumping raw '+responseBody);
                     //response body could not be converted properly, so we cannot catch errors! Therefore, it errors out
-                    logId = IntegrationLog.createLog('Order', externalIdsFromResponse, 'Outbound', JSON.serialize(requestMap), 'Error '+e.getMessage()+' '+responseBody, requestURL, hasAnyError, false); 
+                    logId = IntegrationLog.createLog('Order', externalIdsFromResponse, 'Outbound', JSON.serialize(requestMap), 'Error '+e2.getMessage()+' '+responseBody, requestURL, hasAnyError, false); 
                 }
                 
-            }
+            //}
         }
         else{//means an error happened in the response, which will likely return no useful log, so everything related should be considered to have error'd
             System.debug('Error! '+response.getStatusCode()+'response: '+responseBody);

@@ -36,7 +36,7 @@ public with sharing class TemplateDefaultFields {
 	public class OrderDefaults implements FieldDefaults {
 		public Map<String, Object> getFieldDefaults(Decimal countSObjectCreated) {
 			return new Map<String, Object>{
-                'Status'=>'Draft',
+                'Status'=>'Novo',
 				'EffectiveDate' => Date.today().addDays(1),
                 'ShippingType__c' => 'CIF',
                 'DeliveryDate__c' => Date.today().addDays(2)
