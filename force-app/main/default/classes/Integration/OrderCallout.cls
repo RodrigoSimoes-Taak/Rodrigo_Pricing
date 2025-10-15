@@ -3,7 +3,7 @@ public with sharing class OrderCallout {
     public static void calloutViaOrderIdList(List<Id> orderIdList){
         List<Order> relatedOrderList = [SELECT Id,Account.ExternalId__c,AccountAddress__r.Code__c,PaymentCondition__r.Code__c,EffectiveDate,ShippingType__c,
         DistributionCenter__r.Code__c,OrderNumber,DeliveryDate__c,Status,IntegrationLogOutbound__c,
-        (SELECT Id,Product2.ExternalId__c,totvsItem__c,ExternalId__c,UnitPrice,ListPrice,Quantity FROM OrderItems WHERE DeletedProduct__c = false) 
+        (SELECT Id,Product2.ExternalId__c,totvsItem__c,ExternalId__c,UnitPrice,ListPrice,Quantity,OrderItemNumber FROM OrderItems WHERE DeletedProduct__c = false) 
         FROM Order 
         WHERE Id IN :orderIdList];
         Map<String,List<OrderIN>> requestMap = new Map<String,List<OrderIN>>();
@@ -13,7 +13,7 @@ public with sharing class OrderCallout {
             requestMap.get('request').add(new OrderIN(iOrder));
         }
         System.debug(JSON.serialize(requestMap));
-        String requestURL = 'callout:OrgLucas/services/apexrest/upsertOrder/*';
+        String requestURL = 'callout:OrgLucas/services/apexrest/orders';
         HttpResponse response = IntegrationUtils.sendRequest(requestMap,requestURL);
         
         String logId;
@@ -38,36 +38,23 @@ public with sharing class OrderCallout {
                 }
                 logId = IntegrationLog.createLog('Order', externalIdsFromResponse, 'Outbound', JSON.serialize(requestMap), JSON.serialize(inboundResponse) , requestURL, hasAnyError, false);//hasDeleted doesnt make much sense here
             }
-            /*
             catch(Exception e){
-                System.debug('Response not using Maps!');
-                try{
-                    List<DataIntegration.Response> inboundResponse = (List<DataIntegration.Response>)JSON.deserialize(responseBody, 
-                        List<DataIntegration.Response>.class);
-                        
-                        for (DataIntegration.Response iResponse:inboundResponse){
-                            if (iResponse.hasError == true && !hasAnyError){
-                                hasAnyError = true; 
-                            }
-                            externalIdsFromResponse+=iResponse.externalCode+',';
-                        }
-                    
-                    logId = IntegrationLog.createLog('Order', externalIdsFromResponse, 'Outbound', JSON.serialize(requestMap), JSON.serialize(inboundResponse) , requestURL, hasAnyError, false);//hasDeleted doesnt make much sense here
-                    
-                }*/
-                catch(Exception e2){
-                    hasAnyError = true;
-                    System.debug('Could not parse response, dumping raw '+responseBody);
-                    //response body could not be converted properly, so we cannot catch errors! Therefore, it errors out
-                    logId = IntegrationLog.createLog('Order', externalIdsFromResponse, 'Outbound', JSON.serialize(requestMap), 'Error '+e2.getMessage()+' '+responseBody, requestURL, hasAnyError, false); 
+                System.debug('Callout Response - Could not parse response as map, parsing as list');
+                for (DataIntegration.Response iResponse : (List<DataIntegration.Response>) JSON.deserialize(responseBody, List<DataIntegration.Response>.class)){
+                    if (iResponse.hasError == true && !hasAnyError){
+                        hasAnyError = true; 
+                    }
+                    externalIdsFromResponse+=iResponse.externalCode+',';
                 }
+                logId = IntegrationLog.createLog('Order', externalIdsFromResponse, 'Outbound',  responseBody,JSON.serialize(requestMap), requestURL, hasAnyError, false); 
+            }
                 
-            //}
+            
         }
         else{//means an error happened in the response, which will likely return no useful log, so everything related should be considered to have error'd
             System.debug('Error! '+response.getStatusCode()+'response: '+responseBody);
             hasAnyError = true;
-            logId = IntegrationLog.createLog('Order', externalIdsFromResponse, 'Outbound', JSON.serialize(requestMap),'Error '+response.getStatusCode()+' '+responseBody, requestURL, hasAnyError, false);
+            logId = IntegrationLog.createLog('Order', externalIdsFromResponse, 'Outbound', 'Error '+response.getStatusCode()+' '+responseBody,JSON.serialize(requestMap), requestURL, hasAnyError, false);
             System.debug('Teste3');
         }
         for (Order iOrder : relatedOrderList){
@@ -121,7 +108,7 @@ public with sharing class OrderCallout {
         public Decimal quantity;
         public OrderItemIN(OrderItem orderItemToConvert){
             this.productCode = orderItemToConvert.Product2.ExternalId__c;
-            this.itemCode = orderItemToConvert.ExternalId__c;
+            this.itemCode = orderItemToConvert.orderItemNumber;
             this.totvsItem = orderItemToConvert.totvsItem__c;
             this.unitPrice = orderItemToConvert.UnitPrice;
             this.listPrice = orderItemToConvert.ListPrice;

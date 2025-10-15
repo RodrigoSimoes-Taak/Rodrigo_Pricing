@@ -87,13 +87,20 @@ private class OrderIntegrationTest {
 
         
         AccountAddress__c[] accountAddressesToInsert = new AccountAddress__c[]{};
-        accountAddressesToInsert.add((AccountAddress__c)testFactory.createSObject(new AccountAddress__c(Account__c=accountsToInsert[0].Id,City__c=citiesToInsert[0].Id,Code__c='ER4597')));        insert accountAddressesToInsert;
+        accountAddressesToInsert.add((AccountAddress__c)testFactory.createSObject(new AccountAddress__c(Account__c=accountsToInsert[0].Id,City__c=citiesToInsert[0].Id,Code__c='ER4597')));
         insert accountAddressesToInsert;
         
 
     }
     @isTest
-    static void myUnitTest() {
-        
+    static void testInboundSuccess() {
+        String JSONString = '';
+        RestRequest request = new RestRequest();
+        request.requestURI = '/services/apexrest/orderInbound';
+        request.httpMethod = 'POST'; 
+        request.requestBody = Blob.valueOf(''); 
+        request.addHeader('Content-Type', 'application/json');
+        RestContext.request = request;
+        RestResponse response = new RestResponse();
     }
 }
