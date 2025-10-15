@@ -57,7 +57,7 @@ private class OrderIntegrationTest {
         insert accountGroupsToInsert;
 
         Account[] accountsToInsert = new Account[]{};
-        accountsToInsert.add((Account)testFactory.createSObject(new Account(AccountGroup__c=accountGroupsToInsert[0].Id,CNPJ__c='11.111.111/1111-11')));
+        accountsToInsert.add((Account)testFactory.createSObject(new Account(AccountGroup__c=accountGroupsToInsert[0].Id,CNPJ__c='11.111.111/1111-11',ExternalId__c='01134080000130')));
         insert accountsToInsert;
 
         Tax__c[] taxesToInsert = new Tax__c[]{};
@@ -94,13 +94,126 @@ private class OrderIntegrationTest {
     }
     @isTest
     static void testInboundSuccess() {
-        String JSONString = '';
+        String JSONString = '{ '+
+        '"request":['+
+        '   {'+
+        '   "accountCode": "01134080000130",'+
+        '   "orderCode": "0000100",'+
+        '   "status": "Draft",'+
+        '   "addressCode": "ER4597",'+
+        '   "paymentCode": "90",'+
+        '   "effectiveDate": "2020-01-01",'+
+        '   "freightType": "CIF",'+
+        '   "distributionCenterCode": "3895784309",'+
+        '   "deliveryDate": "2021-02-12",'+
+        '   "obs": "Envio deve ser feito antes de março",'+
+        '   "orderItems": ['+
+        '       {'+
+        '       "quantity": 1,'+
+        '       "productCode": "111",'+
+        '       "unitPrice": 49.99,'+
+        '       "totvsItem": false,'+
+        '       "listPrice": 259.99'+
+        '       }'+
+        '   ]'+
+        '   }'+
+        '   ]'+
+        '}';
         RestRequest request = new RestRequest();
         request.requestURI = '/services/apexrest/orderInbound';
         request.httpMethod = 'POST'; 
-        request.requestBody = Blob.valueOf(''); 
+        request.requestBody = Blob.valueOf(JSONString); 
         request.addHeader('Content-Type', 'application/json');
         RestContext.request = request;
         RestResponse response = new RestResponse();
+        RestContext.response = response;
+        Test.startTest();
+        OrderIntegration.orderInbound();
+        Test.stopTest();
+
+    }
+    @isTest
+    static void testInboundPartialSuccess(){
+        String JSONString = '{ '+
+        '"request":['+
+        '   {'+
+        '   "accountCode": "01134080000130",'+
+        '   "orderCode": "0000100",'+
+        '   "status": "Draft",'+
+        '   "addressCode": "ER4597",'+
+        '   "paymentCode": "90",'+
+        '   "effectiveDate": "2020-01-01",'+
+        '   "freightType": "CIF",'+
+        '   "distributionCenterCode": "3895784309",'+
+        '   "deliveryDate": "2021-02-12",'+
+        '   "obs": "Envio deve ser feito antes de março",'+
+        '   "orderItems": ['+
+        '       {'+
+        '       "quantity": 1,'+
+        '       "productCode": "111",'+
+        '       "unitPrice": 49.99,'+
+        '       "totvsItem": false,'+
+        '       "listPrice": 259.99'+
+        '       },'+
+        '       {'+
+        '       "quantity": 1,'+
+        '       "productCode": "112",'+
+        '       "unitPrice": 49.99,'+
+        '       "totvsItem": false,'+
+        '       "listPrice": 259.99'+
+        '       }'+
+        '   ]'+
+        '   },'+
+        '   {'+
+        '   "accountCode": "0113408000013",'+
+        '   "orderCode": "0000101",'+
+        '   "status": "Draft",'+
+        '   "addressCode": "ER4597",'+
+        '   "paymentCode": "90",'+
+        '   "effectiveDate": "2020-01-01",'+
+        '   "freightType": "CIF",'+
+        '   "distributionCenterCode": "3895784309",'+
+        '   "deliveryDate": "2021-02-12",'+
+        '   "obs": "Envio deve ser feito antes de março",'+
+        '   "orderItems": ['+
+        '       {'+
+        '       "quantity": 1,'+
+        '       "productCode": "111",'+
+        '       "unitPrice": 49.99,'+
+        '       "totvsItem": false,'+
+        '       "listPrice": 259.99'+
+        '       }'+
+        '   ]'+
+        '   }'+
+        '   ]'+
+        '}';
+        RestRequest request = new RestRequest();
+        request.requestURI = '/services/apexrest/orderInbound';
+        request.httpMethod = 'POST'; 
+        request.requestBody = Blob.valueOf(JSONString); 
+        request.addHeader('Content-Type', 'application/json');
+        RestContext.request = request;
+        RestResponse response = new RestResponse();
+        RestContext.response = response;
+        Test.startTest();
+        OrderIntegration.orderInbound();
+        Test.stopTest();
+    }
+    @isTest
+    public static void testInboundEmpty(){
+        String JSONString = '{'+
+        '   "request": []'+
+        '}';
+        RestRequest request = new RestRequest();
+        request.requestURI = '/services/apexrest/orderInbound';
+        request.httpMethod = 'POST'; 
+        request.requestBody = Blob.valueOf(JSONString); 
+        request.addHeader('Content-Type', 'application/json');
+        RestContext.request = request;
+        RestResponse response = new RestResponse();
+        RestContext.response = response;
+        Test.startTest();
+        OrderIntegration.orderInbound();
+        Test.stopTest();
     }
 }

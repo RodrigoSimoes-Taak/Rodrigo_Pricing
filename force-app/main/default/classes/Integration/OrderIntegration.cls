@@ -1,9 +1,6 @@
 @RestResource(urlMapping='/orderInbound')
 global with sharing class OrderIntegration {
     
-    
-    
-    
     public class OrderRequest {
         public List<OrderIN> request;
     }
