@@ -66,6 +66,7 @@ global with sharing class OrderIntegration {
     @HttpPost
 	global static Map<String,List<DataIntegration.Response>> orderInbound(){
 		List<OrderIN> ordersToIntegrate = ((OrderRequest)JSON.deserialize(RestContext.request.requestBody.toString(),OrderRequest.class)).request;
+        
         //code to relate Codes with IDs using SOQL
         String externalIdList = '';
         for (OrderIN iOrder:ordersToIntegrate){
@@ -81,7 +82,7 @@ global with sharing class OrderIntegration {
 
             List<Order> newOrders = convertOrder(ordersToIntegrate,responseMap);
             if (newOrders.isEmpty()){
-                IntegrationLog.createLog('Order', externalIdList, 'Inbound',  JSON.serialize(RestContext.request.requestBody),JSON.serialize(responseMap), endpoint, true, false);
+                IntegrationLog.createLog('Order', externalIdList, 'Inbound',  JSON.serialize(ordersToIntegrate),JSON.serialize(responseMap), endpoint, true, false);
                 return responseMap;
             }
             
@@ -137,7 +138,7 @@ global with sharing class OrderIntegration {
             
             
             
-            String logId = IntegrationLog.createLog('Order', externalIdList, 'Inbound', JSON.serialize(RestContext.request.requestBody),JSON.serialize(responseMap),  endpoint, hasAnyErrors, false);
+            String logId = IntegrationLog.createLog('Order', externalIdList, 'Inbound', JSON.serialize(ordersToIntegrate),JSON.serialize(responseMap),  endpoint, hasAnyErrors, false);
             for (Order iOrder: newOrders){
                 iOrder.IntegrationLogInbound__c = logId;
                 update iOrder;
@@ -146,7 +147,7 @@ global with sharing class OrderIntegration {
         }
         catch(Exception e){
             System.debug('Error on OrderIntegration: '+e.getMessage());
-            IntegrationLog.createLog('Order', externalIdList, 'Inbound', JSON.serialize(RestContext.request.requestBody), JSON.serialize(responseMap), endpoint, true, false);
+            IntegrationLog.createLog('Order', externalIdList, 'Inbound', JSON.serialize(ordersToIntegrate), JSON.serialize(responseMap), endpoint, true, false);
             
         }
         

@@ -110,7 +110,7 @@ private class OrderCalloutTest {
         Test.setMock(HttpCalloutMock.class, new OrderCalloutMockSuccess());
         
         Order orderToApprove = [SELECT Id,IntegrationLogOutbound__c FROM Order LIMIT 1];
-        orderToApprove.Status = 'Aprovado';
+        orderToApprove.Status = 'Em Aprovação';
         update orderToApprove;
         Test.stopTest();
         orderToApprove = [SELECT Id,IntegrationLogOutbound__c FROM Order LIMIT 1];
@@ -143,5 +143,21 @@ private class OrderCalloutTest {
         Test.stopTest();
         orderToApprove = [SELECT Id,IntegrationLogOutbound__c FROM Order LIMIT 1];
         System.assert(orderToApprove.IntegrationLogOutbound__c != null);
+    }
+    @isTest
+    static void testCalloutNeedApproval() {
+        Test.startTest();
+        Test.setMock(HttpCalloutMock.class, new OrderCalloutMockSuccess());
+        
+        Product2 orderItemProduct = [SELECT Id FROM Product2 LIMIT 1];
+        Order orderToApprove = [SELECT Id,IntegrationLogOutbound__c FROM Order LIMIT 1];
+        OrderItem orderItemToInsert = new OrderItem(Product2Id=orderItemProduct.Id,OrderId=orderToApprove.Id,UnitPrice=1,ListPrice=200,Quantity=1);
+        insert orderItemToInsert;
+        
+        orderToApprove.Status = 'Em Aprovação';
+        update orderToApprove;
+        Test.stopTest();
+        
+        
     }
 }
