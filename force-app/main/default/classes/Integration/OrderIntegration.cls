@@ -82,7 +82,7 @@ global with sharing class OrderIntegration {
                 System.debug('Teste '+match.group(1));
                 System.debug('Teste2 '+lines[Integer.valueOf(match.group(1))-1]);
             }
-            String errorMessage = (e.getMessage().split('\\['))[0]+ ' '+lines[Integer.valueOf(match.group(1))-1];
+            String errorMessage = 'Error! Line ' +lines[Integer.valueOf(match.group(1))-1]+' Should be a string!';
             System.debug('Error on OrderIntegration: '+e.getStackTraceString()+e.getMessage()+':\n   '+RestContext.request.requestBody.toString());
             responseMap.get('Order').add(new DataIntegration.Response('','',errorMessage,'Order'));
             IntegrationLog.createLog('Order', '', 'Inbound', RestContext.request.requestBody.toString(), errorMessage, endpoint, true, false);
