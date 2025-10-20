@@ -65,21 +65,40 @@ global with sharing class OrderIntegration {
     }
     @HttpPost
 	global static Map<String,List<DataIntegration.Response>> orderInbound(){
-		List<OrderIN> ordersToIntegrate = ((OrderRequest)JSON.deserialize(RestContext.request.requestBody.toString(),OrderRequest.class)).request;
-        
+        String endpoint = System.Url.getOrgDomainUrl().toExternalForm() + '/services/apexrest/orderInbound';
+        Map<String,List<DataIntegration.Response>> responseMap = new Map<String,List<DataIntegration.Response>>();
+        responseMap.put('Order',new List<DataIntegration.Response>());
+        responseMap.put('OrderItem',new List<DataIntegration.Response>());
+        List<OrderIN> ordersToIntegrate = new List<OrderIN>();
+        try{
+            
+		    ordersToIntegrate = ((OrderRequest)JSON.deserialize(RestContext.request.requestBody.toString(),OrderRequest.class)).request;
+        }
+        catch(Exception e){
+            String[] lines = RestContext.request.requestBody.toString().split('\n');
+            Pattern getLine = Pattern.compile('line:(\\d+)');
+            Matcher match = getLine.matcher(e.getMessage());
+            if (match.find()){
+                System.debug('Teste '+match.group(1));
+                System.debug('Teste2 '+lines[Integer.valueOf(match.group(1))-1]);
+            }
+            String errorMessage = (e.getMessage().split('\\['))[0]+ ' '+lines[Integer.valueOf(match.group(1))-1];
+            System.debug('Error on OrderIntegration: '+e.getStackTraceString()+e.getMessage()+':\n   '+RestContext.request.requestBody.toString());
+            responseMap.get('Order').add(new DataIntegration.Response('','',errorMessage,'Order'));
+            IntegrationLog.createLog('Order', '', 'Inbound', RestContext.request.requestBody.toString(), errorMessage, endpoint, true, false);
+            RestContext.response.statusCode = 400;
+            return responseMap;
+
+        }
         //code to relate Codes with IDs using SOQL
         String externalIdList = '';
         for (OrderIN iOrder:ordersToIntegrate){
             externalIdList += iOrder.orderCode + ',';
         }
         Boolean hasAnyErrors = false;
-        String endpoint = System.Url.getOrgDomainUrl().toExternalForm() + '/services/apexrest/orderInbound';
-        Map<String,List<DataIntegration.Response>> responseMap = new Map<String,List<DataIntegration.Response>>();
+       
+        
         try{
-            
-            responseMap.put('Order',new List<DataIntegration.Response>());
-            responseMap.put('OrderItem',new List<DataIntegration.Response>());
-
             List<Order> newOrders = convertOrder(ordersToIntegrate,responseMap);
             if (newOrders.isEmpty()){
                 IntegrationLog.createLog('Order', externalIdList, 'Inbound',  JSON.serialize(ordersToIntegrate),JSON.serialize(responseMap), endpoint, true, false);
@@ -145,10 +164,10 @@ global with sharing class OrderIntegration {
             for (Order iOrder:[SELECT ExternalId__c, (SELECT Id FROM OrderItems) FROM Order WHERE ExternalId__c IN:successfulOrderUpsertExternalIds]){
                 integratedOrders.put(iOrder.ExternalId__c,iOrder);
             }
-            
+
             for (String iOrderExternalId: successfulOrderUpsertExternalIds){
                 if (integratedOrders.get(iOrderExternalId).OrderItems.isEmpty()){
-                    ordersToDelete.add(new Order(ExternalId__c = iOrderExternalId));
+                    ordersToDelete.add(new Order(Id = integratedOrders.get(iOrderExternalId).Id));
                 }
                 else{
                     ordersToUpdate.add(new Order(ExternalId__c = iOrderExternalId,IntegrationLogInbound__c = logId));
@@ -156,8 +175,15 @@ global with sharing class OrderIntegration {
                 
                 
             }
-            update ordersToUpdate;
-            delete ordersToDelete;
+            if (!ordersToUpdate.isEmpty()){
+                Database.upsert(ordersToUpdate,Order.ExternalId__c,false);
+                
+            }
+            if (!ordersToDelete.isEmpty()){
+                delete ordersToDelete;
+            }
+            
+           
             
         }
         catch(Exception e){
