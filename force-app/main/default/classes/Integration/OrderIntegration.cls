@@ -139,10 +139,25 @@ global with sharing class OrderIntegration {
             
             
             String logId = IntegrationLog.createLog('Order', externalIdList, 'Inbound', JSON.serialize(ordersToIntegrate),JSON.serialize(responseMap),  endpoint, hasAnyErrors, false);
-            for (Order iOrder: newOrders){
-                iOrder.IntegrationLogInbound__c = logId;
-                update iOrder;
+            List<Order> ordersToUpdate = new List<Order>();
+            List<Order> ordersToDelete = new List<Order>();
+            Map<String,Order> integratedOrders  = new Map<String,Order>();
+            for (Order iOrder:[SELECT ExternalId__c, (SELECT Id FROM OrderItems) FROM Order WHERE ExternalId__c IN:successfulOrderUpsertExternalIds]){
+                integratedOrders.put(iOrder.ExternalId__c,iOrder);
             }
+            
+            for (String iOrderExternalId: successfulOrderUpsertExternalIds){
+                if (integratedOrders.get(iOrderExternalId).OrderItems.isEmpty()){
+                    ordersToDelete.add(new Order(ExternalId__c = iOrderExternalId));
+                }
+                else{
+                    ordersToUpdate.add(new Order(ExternalId__c = iOrderExternalId,IntegrationLogInbound__c = logId));
+                }
+                
+                
+            }
+            update ordersToUpdate;
+            delete ordersToDelete;
             
         }
         catch(Exception e){
