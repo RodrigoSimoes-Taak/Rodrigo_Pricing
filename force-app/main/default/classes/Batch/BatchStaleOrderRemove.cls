@@ -1,7 +1,7 @@
 public with sharing class BatchStaleOrderRemove implements Database.Batchable<SObject> {
     public Database.QueryLocator start(Database.BatchableContext context){
         return Database.getQueryLocator(
-            'SELECT Id,(SELECT Id FROM Attachments) FROM Order WHERE CreatedDate < LAST_N_MONTHS:'+(MonthsToDelete__mdt.getInstance('m01fj00000MnEd3AAF'))
+            'SELECT Id,(SELECT Id FROM Attachments) FROM Order WHERE CreatedDate != LAST_N_MONTHS:'+(DevParameters__mdt.getInstance('MaxNumberMonthsOrder')).Value__c
         );
     }
     public void execute(Database.BatchableContext context, List<Order> records){

@@ -20,7 +20,7 @@
  * See the Apex Language Reference for more information about Testing and Code Coverage.
  */
 @isTest
-private class OrderCalloutTest {
+private class BatchStaleOrderRemoveTest {
     @TestSetup
     static void makeData(){
         TestFactorySObject testFactory = TestFactorySObject.getInstance();
@@ -93,6 +93,7 @@ private class OrderCalloutTest {
         ordersToInsert.add((Order) testFactory.createSObject(testFactory.createSObject(new Order(AccountId=accountsToInsert[0].Id,DistributionCenter__c=distributionCentersToInsert[0].Id,
         AccountAddress__c = accountAddressesToInsert[0].Id,PaymentCondition__c=paymentConditionsToInsert[0].Id,Status = 'Novo'))));
         insert ordersToInsert;
+        Test.setCreatedDate(ordersToInsert[0].Id, DateTime.newInstance(2012,12,12));
 
         PricebookEntry[] pricebookEntriesToInsert = new PricebookEntry[]{};
         pricebookEntriesToInsert.add((PricebookEntry) testFactory.createSObject(new PricebookEntry(Pricebook2Id=priceBookId,
@@ -103,62 +104,12 @@ private class OrderCalloutTest {
         orderItemsToInsert.add(new OrderItem(Product2Id=productsToInsert[0].Id,OrderId=ordersToInsert[0].Id,UnitPrice=20,ListPrice=25,Quantity=1));
         insert orderItemsToInsert;
     }
-
     @isTest
-    static void testCalloutSuccess() {
+    static void myUnitTest() {
         Test.startTest();
-        Test.setMock(HttpCalloutMock.class, new OrderCalloutMockSuccess());
-        
-        Order orderToApprove = [SELECT Id,IntegrationLogOutbound__c FROM Order LIMIT 1];
-        orderToApprove.Status = 'Em Aprovação';
-        update orderToApprove;
+        Database.executeBatch(new BatchStaleOrderRemove());
         Test.stopTest();
-        orderToApprove = [SELECT Id,IntegrationLogOutbound__c FROM Order LIMIT 1];
-        System.assert(orderToApprove.IntegrationLogOutbound__c != null);
-    }
-    @isTest
-    static void testCalloutError(){
-        Test.startTest();
-        
-        
-        Test.setMock(HttpCalloutMock.class, new OrderCalloutMockError());
-        
-        Order orderToApprove = [SELECT Id,IntegrationLogOutbound__c FROM Order LIMIT 1];
-        orderToApprove.Status = 'Aprovado';
-        update orderToApprove;
-        Test.stopTest();
-        orderToApprove = [SELECT Id,IntegrationLogOutbound__c FROM Order LIMIT 1];
-        System.assert(orderToApprove.IntegrationLogOutbound__c != null);
-    }   
-    @isTest
-    static void testCalloutResponseError(){
-        Test.startTest();
-        
-        
-        Test.setMock(HttpCalloutMock.class, new OrderCalloutResponseError());
-        
-        Order orderToApprove = [SELECT Id,IntegrationLogOutbound__c FROM Order LIMIT 1];
-        orderToApprove.Status = 'Aprovado';
-        update orderToApprove;
-        Test.stopTest();
-        orderToApprove = [SELECT Id,IntegrationLogOutbound__c FROM Order LIMIT 1];
-        System.assert(orderToApprove.IntegrationLogOutbound__c != null);
-    }
-    @isTest
-    static void testCalloutNeedApproval() {
-        Test.startTest();
-        Test.setMock(HttpCalloutMock.class, new OrderCalloutMockSuccess());
-        
-        Product2 orderItemProduct = [SELECT Id FROM Product2 LIMIT 1];
-        Order orderToApprove = [SELECT Id,IntegrationLogOutbound__c FROM Order LIMIT 1];
-        OrderItem orderItemToInsert = new OrderItem(Product2Id=orderItemProduct.Id,OrderId=orderToApprove.Id,UnitPrice=1,ListPrice=200,Quantity=1);
-        insert orderItemToInsert;
-        
-        orderToApprove.Status = 'Em Aprovação';
-        update orderToApprove;
-        Test.stopTest();
-        System.assertEquals('Em Aprovação', [SELECT Id,Status FROM Order LIMIT 1].Status , 'Status should be the same, since the order must be approved');
-        
-        
+        Integer orderAmount = [SELECT Count() FROM Order];
+        System.Assert.areEqual(0, orderAmount, 'Should have no orders, instead '+orderAmount+' exist ');
     }
 }
