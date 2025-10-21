@@ -100,7 +100,7 @@ public with sharing class OrderCallout {
     @InvocableMethod
     public static void invokeCalloutIntegration(List<Id> orderIdList){
         System.debug('Order Send to callout button OrderList: '+orderIdList);
-        OrderTriggerHelper.sendOrdersToCallout(orderIdList);
+        OrderTriggerHelper.calloutToExternalSystem(orderIdList);
     }
     public class OrderIN{
         public String accountCode;

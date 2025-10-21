@@ -28,7 +28,10 @@ public with sharing class OrderTriggerHandler {
 		this.newRecordMap = newRecordMap;
 	}
 	public void beforeUpdate() {
-        OrderTriggerHelper.handleUpdateOrder(this.newRecordList);
+        OrderTriggerHelper.checkIfApprovalRequired(this.newRecordList);
 	}
+    public void afterUpdate(){
+        OrderTriggerHelper.sendOrdersToCallout(this.newRecordMap);
+    }
 	
 }
