@@ -92,34 +92,31 @@ global with sharing class OrderIntegration {
             inboundLog.setPayloadIN(JSON.serialize(ordersToIntegrate));
         }
         catch(Exception e){
-            String[] lines = RestContext.request.requestBody.toString().split('\n');
-            Pattern getLine = Pattern.compile('line:(\\d+)');
-            Matcher match = getLine.matcher(e.getMessage());
-            if (match.find()){
-                System.debug('Teste '+match.group(1));
-                System.debug('Teste2 '+lines[Integer.valueOf(match.group(1))-1]);
-            }
-            String errorMessage = 'Error! Line ' +lines[Integer.valueOf(match.group(1))-1]+' Should be a string!';
-
+            String errorMessage = IntegrationUtils.catchJSONError(e);
+            
             System.debug('Error on OrderIntegration: '+e.getStackTraceString()+e.getMessage()+':\n   '+RestContext.request.requestBody.toString());
 
-            responseMap.get('Order').add(new DataIntegration.Response().setErrorMessage(errorMessage).setSObjectType('Order'));
+            responseMap.get('Order').add(new DataIntegration.Response()
+                .setErrorMessage(errorMessage)
+                .setSObjectType('Order'));
+
             inboundLog.setPayloadIN(RestContext.request.requestBody.toString())
                 .setExternalIdList('')
                 .setHasAnyErrors(true)
                 .setHasDeleted(false)
                 .setPayloadOUT(errorMessage);
+
             inboundLog.createLog();
             RestContext.response.statusCode = 400;
 
             return responseMap;
 
         }
-        //code to relate Codes with IDs using SOQL
         String externalIdList = '';
         for (OrderIN iOrder:ordersToIntegrate){
             externalIdList += iOrder.orderCode + ',';
         }
+
         inboundLog.setExternalIdList(externalIdList);
         Boolean hasAnyErrors = false;
        
@@ -145,6 +142,7 @@ global with sharing class OrderIntegration {
                 else if (errorMessage == ''){
                     successfulOrderUpsertExternalIds.add(newOrders[i].ExternalId__c);
                 }
+
                 responseMap.get('Order').add(new DataIntegration.Response()
                     .setSalesforceId(orderUpsertResults[i].getId())
                     .setExternalCode(newOrders[i].ExternalId__c)
@@ -186,28 +184,34 @@ global with sharing class OrderIntegration {
             inboundLog.setPayloadOUT(JSON.serialize(responseMap))
                 .setHasAnyErrors(hasAnyErrors)
                 .setHasDeleted(false);
+                
             String logId = inboundLog.createLog();
             List<Order> ordersToUpdate = new List<Order>();
             List<Order> ordersToDelete = new List<Order>();
             Map<String,Order> integratedOrders  = new Map<String,Order>();
+
+            //populate a map of <ExternalId,Order>
             for (Order iOrder:[SELECT ExternalId__c, (SELECT Id FROM OrderItems) FROM Order WHERE ExternalId__c IN:successfulOrderUpsertExternalIds]){
                 integratedOrders.put(iOrder.ExternalId__c,iOrder);
             }
 
             for (String iOrderExternalId: successfulOrderUpsertExternalIds){
+                Id currentOrderId = integratedOrders.get(iOrderExternalId).Id;
+
                 if (integratedOrders.get(iOrderExternalId).OrderItems.isEmpty()){
-                    ordersToDelete.add(new Order(Id = integratedOrders.get(iOrderExternalId).Id));
+                    ordersToDelete.add(new Order(Id = currentOrderId));
                 }
+
                 else{
-                    ordersToUpdate.add(new Order(ExternalId__c = iOrderExternalId,IntegrationLogInbound__c = logId));
+                    ordersToUpdate.add(new Order(Id = currentOrderId,IntegrationLogInbound__c = logId));
                 }
-                
-                
             }
+            //add created logs to related lookup field in Order
             if (!ordersToUpdate.isEmpty()){
-                Database.upsert(ordersToUpdate,Order.ExternalId__c,false);
+                update ordersToUpdate;
                 
             }
+            //delete Orders with no OrderItems related to it!
             if (!ordersToDelete.isEmpty()){
                 delete ordersToDelete;
             }
