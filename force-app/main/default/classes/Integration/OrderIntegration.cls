@@ -59,6 +59,14 @@ global with sharing class OrderIntegration {
                     
                 }
             }
+            else{
+                responseMap.get('OrderItem').add(new DataIntegration.Response()
+                    .setSalesforceId(null)
+                    .setErrorMessage('Parent Order not successfully inserted')
+                    .setSObjectType('OrderItem')
+                    .setExternalCode(null)
+                    );
+            }
             
         }
         return newOrderItems;
