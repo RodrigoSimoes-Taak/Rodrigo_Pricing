@@ -60,12 +60,14 @@ global with sharing class OrderIntegration {
                 }
             }
             else{
-                responseMap.get('OrderItem').add(new DataIntegration.Response()
-                    .setSalesforceId(null)
-                    .setErrorMessage('Parent Order not successfully inserted')
-                    .setSObjectType('OrderItem')
-                    .setExternalCode(null)
+                for (OrderItemIN iOrderItem:ordersToIntegrate[i].orderItems){
+                    responseMap.get('OrderItem').add(new DataIntegration.Response()
+                        .setSalesforceId(null)
+                        .setErrorMessage('Parent Order '+ordersToIntegrate[i].orderCode+' not successfully inserted')
+                        .setSObjectType('OrderItem')
+                        .setExternalCode(iOrderItem.itemCode)
                     );
+                }
             }
             
         }
