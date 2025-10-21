@@ -8,19 +8,28 @@ public with sharing class OrderCallout {
         WHERE Id IN :orderIdList];
         Map<String,List<OrderIN>> requestMap = new Map<String,List<OrderIN>>();
         Set<String> relatedOrderExternalIds = new Set<String>();
+
         requestMap.put('request', new List<OrderIN>());
+        
         for (Order iOrder:relatedOrderList){
             requestMap.get('request').add(new OrderIN(iOrder));
         }
+
         System.debug(JSON.serialize(requestMap));
+
         String requestURL = 'callout:OrgLucas/services/apexrest/orders';
         HttpResponse response = IntegrationUtils.sendRequest(requestMap,requestURL);
         
-        String logId;
+        IntegrationLog calloutLog = new IntegrationLog()
+            .setEndpoint(requestURL)
+            .setPayloadOUT(JSON.serialize(requestMap))
+            .setIntegrationName('Order')
+            .setRecordTypeName('Outbound');
         
         String responseBody = response.getBody();
         Boolean hasAnyError = false;
         String externalIdsFromResponse = '';
+
         if (IntegrationUtils.isResponseOk(response)){
             
             System.debug(responseBody);
@@ -33,35 +42,57 @@ public with sharing class OrderCallout {
                         if (iResponse.hasError == true && !hasAnyError){
                             hasAnyError = true; 
                         }
+
                         externalIdsFromResponse+=iResponse.externalCode+',';
                     }
                 }
-                logId = IntegrationLog.createLog('Order', externalIdsFromResponse, 'Outbound', JSON.serialize(requestMap), JSON.serialize(inboundResponse) , requestURL, hasAnyError, false);//hasDeleted doesnt make much sense here
+                calloutLog.setExternalIdList(externalIdsFromResponse)
+                    .setPayloadIN(JSON.serialize(inboundResponse))
+                    .setHasAnyErrors(hasAnyError)
+                    .setHasDeleted(false);
+
+                
             }
+
             catch(Exception e){
+
                 System.debug('Callout Response - Could not parse response as map, parsing as list');
+
                 for (DataIntegration.Response iResponse : (List<DataIntegration.Response>) JSON.deserialize(responseBody, List<DataIntegration.Response>.class)){
                     if (iResponse.hasError == true && !hasAnyError){
                         hasAnyError = true; 
                     }
+
                     externalIdsFromResponse+=iResponse.externalCode+',';
                 }
-                logId = IntegrationLog.createLog('Order', externalIdsFromResponse, 'Outbound',  responseBody,JSON.serialize(requestMap), requestURL, hasAnyError, false); 
+                calloutLog.setExternalIdList(externalIdsFromResponse)
+                    .setPayloadIN(responseBody)
+                    .setHasAnyErrors(hasAnyError)
+                    .setHasDeleted(false);
             }
                 
             
         }
         else{//means an error happened in the response, which will likely return no useful log, so everything related should be considered to have error'd
+
             System.debug('Error! '+response.getStatusCode()+'response: '+responseBody);
+            
             hasAnyError = true;
-            logId = IntegrationLog.createLog('Order', externalIdsFromResponse, 'Outbound', 'Error '+response.getStatusCode()+' '+responseBody,JSON.serialize(requestMap), requestURL, hasAnyError, false);
+            calloutLog.setExternalIdList(externalIdsFromResponse)
+                .setPayloadIN('Error '+response.getStatusCode()+' '+responseBody)
+                .setHasAnyErrors(hasAnyError)
+                .setHasDeleted(false);
             System.debug('Teste3');
         }
+        String logId = calloutLog.createLog();
         for (Order iOrder : relatedOrderList){
             iOrder.IntegrationLogOutbound__c = logId;
+
             if (hasAnyError) iOrder.Status = 'Erro De Integração';
+
             else iOrder.Status = 'Integrado';
         }
+
         update relatedOrderList;
        
         

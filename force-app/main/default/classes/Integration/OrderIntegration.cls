@@ -62,17 +62,24 @@ global with sharing class OrderIntegration {
             
         }
         return newOrderItems;
-    }
+    } 
     @HttpPost
 	global static Map<String,List<DataIntegration.Response>> orderInbound(){
         String endpoint = System.Url.getOrgDomainUrl().toExternalForm() + '/services/apexrest/orderInbound';
         Map<String,List<DataIntegration.Response>> responseMap = new Map<String,List<DataIntegration.Response>>();
         responseMap.put('Order',new List<DataIntegration.Response>());
         responseMap.put('OrderItem',new List<DataIntegration.Response>());
+        IntegrationLog inboundLog = new IntegrationLog()
+            .setIntegrationName('Order')
+            .setRecordTypeName('Inbound')
+            .setEndpoint(endpoint);
+        
         List<OrderIN> ordersToIntegrate = new List<OrderIN>();
+
         try{
             
 		    ordersToIntegrate = ((OrderRequest)JSON.deserialize(RestContext.request.requestBody.toString(),OrderRequest.class)).request;
+            inboundLog.setPayloadIN(JSON.serialize(ordersToIntegrate));
         }
         catch(Exception e){
             String[] lines = RestContext.request.requestBody.toString().split('\n');
@@ -83,10 +90,18 @@ global with sharing class OrderIntegration {
                 System.debug('Teste2 '+lines[Integer.valueOf(match.group(1))-1]);
             }
             String errorMessage = 'Error! Line ' +lines[Integer.valueOf(match.group(1))-1]+' Should be a string!';
+
             System.debug('Error on OrderIntegration: '+e.getStackTraceString()+e.getMessage()+':\n   '+RestContext.request.requestBody.toString());
-            responseMap.get('Order').add(new DataIntegration.Response('','',errorMessage,'Order'));
-            IntegrationLog.createLog('Order', '', 'Inbound', RestContext.request.requestBody.toString(), errorMessage, endpoint, true, false);
+
+            responseMap.get('Order').add(new DataIntegration.Response().setErrorMessage(errorMessage).setSObjectType('Order'));
+            inboundLog.setPayloadIN(RestContext.request.requestBody.toString())
+                .setExternalIdList('')
+                .setHasAnyErrors(true)
+                .setHasDeleted(false)
+                .setPayloadOUT(errorMessage);
+            inboundLog.createLog();
             RestContext.response.statusCode = 400;
+
             return responseMap;
 
         }
@@ -95,13 +110,17 @@ global with sharing class OrderIntegration {
         for (OrderIN iOrder:ordersToIntegrate){
             externalIdList += iOrder.orderCode + ',';
         }
+        inboundLog.setExternalIdList(externalIdList);
         Boolean hasAnyErrors = false;
        
         
         try{
             List<Order> newOrders = convertOrder(ordersToIntegrate,responseMap);
             if (newOrders.isEmpty()){
-                IntegrationLog.createLog('Order', externalIdList, 'Inbound',  JSON.serialize(ordersToIntegrate),JSON.serialize(responseMap), endpoint, true, false);
+                hasAnyErrors = true;
+                inboundLog.setPayloadOUT(JSON.serialize(responseMap))
+                    .setHasAnyErrors(hasAnyErrors)
+                    .setHasDeleted(false);
                 return responseMap;
             }
             
@@ -109,20 +128,19 @@ global with sharing class OrderIntegration {
             List<Database.UpsertResult> orderUpsertResults = Database.upsert(newOrders,Order.ExternalId__c,false);
             Set<String> successfulOrderUpsertExternalIds = new Set<String>();
             for (Integer i = 0; i < orderUpsertResults.size(); i++){
-                String errorMessage = '';
-                if (!orderUpsertResults[i].isSuccess()){
-                    if (!hasAnyErrors){
-                        hasAnyErrors = true;
-                    }
-                    
-                    for (Database.Error iError: orderUpsertResults[i].getErrors()){
-                        errorMessage += iError.getStatusCode()+ ' - '+ iError.getMessage();
-                    }
+                String errorMessage = IntegrationUtils.getErrorMessage(orderUpsertResults[i]);
+                if (errorMessage != '' && !hasAnyErrors){
+                    hasAnyErrors = true;
                 }
-                else{
+                else if (errorMessage == ''){
                     successfulOrderUpsertExternalIds.add(newOrders[i].ExternalId__c);
                 }
-                responseMap.get('Order').add(new DataIntegration.Response(orderUpsertResults[i].getId(),newOrders[i].ExternalId__c,errorMessage,'Order'));
+                responseMap.get('Order').add(new DataIntegration.Response()
+                    .setSalesforceId(orderUpsertResults[i].getId())
+                    .setExternalCode(newOrders[i].ExternalId__c)
+                    .setErrorMessage(errorMessage)
+                    .setSObjectType('Order')
+                );
                 
             }
             
@@ -136,28 +154,29 @@ global with sharing class OrderIntegration {
                 externalIdList += newOrderItems[i].ExternalId__c + ',';
                 
             }
+            inboundLog.setExternalIdList(externalIdList);
             
 
             List<Database.UpsertResult> orderItemsUpsertResults = Database.upsert(newOrderItems,false);
             for (Integer i = 0;i < orderItemsUpsertResults.size();++i){ 
-                String errorMessage = '';
-                if (!orderItemsUpsertResults[i].isSuccess()){
-                    
-                    if (!hasAnyErrors){
-                        hasAnyErrors = true;
-                    }
-                    
-                    for (Database.Error iError: orderItemsUpsertResults[i].getErrors()){
-                        errorMessage += iError.getStatusCode()+ ' - '+ iError.getMessage();
-                    }
-                    
+                
+                String errorMessage = IntegrationUtils.getErrorMessage(orderItemsUpsertResults[i]);
+                if (errorMessage != '' && !hasAnyErrors){
+                    hasAnyErrors = true;
                 }
-                responseMap.get('OrderItem').add(new DataIntegration.Response(orderItemsUpsertResults[i].getId(),newOrderItems[i].ExternalId__c,errorMessage,'OrderItem'));
+                
+                responseMap.get('OrderItem').add(new DataIntegration.Response()
+                    .setSalesforceId(orderItemsUpsertResults[i].getId())
+                    .setExternalCode(newOrderItems[i].ExternalId__c)
+                    .setErrorMessage(errorMessage)
+                    .setSObjectType('OrderItem'));
             }
             
             
-            
-            String logId = IntegrationLog.createLog('Order', externalIdList, 'Inbound', JSON.serialize(ordersToIntegrate),JSON.serialize(responseMap),  endpoint, hasAnyErrors, false);
+            inboundLog.setPayloadOUT(JSON.serialize(responseMap))
+                .setHasAnyErrors(hasAnyErrors)
+                .setHasDeleted(false);
+            String logId = inboundLog.createLog();
             List<Order> ordersToUpdate = new List<Order>();
             List<Order> ordersToDelete = new List<Order>();
             Map<String,Order> integratedOrders  = new Map<String,Order>();
@@ -188,8 +207,10 @@ global with sharing class OrderIntegration {
         }
         catch(Exception e){
             System.debug('Error on OrderIntegration: '+e.getMessage());
-            IntegrationLog.createLog('Order', externalIdList, 'Inbound', JSON.serialize(ordersToIntegrate), JSON.serialize(responseMap), endpoint, true, false);
-            
+            inboundLog.setExternalIdList(externalIdList)
+                .setHasAnyErrors(true)
+                .setHasDeleted(false);
+            inboundLog.createLog();            
         }
         
         

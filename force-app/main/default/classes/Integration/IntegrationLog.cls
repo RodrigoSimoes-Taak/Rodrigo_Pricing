@@ -1,6 +1,54 @@
 public with sharing class IntegrationLog {
-	public static Id createLog(String integrationName, String externalIdList, String recordTypeName, String payloadIN, String payloadOUT,
-								String endpoint, Boolean hasAnyErrors, Boolean hasDeleted){
+	String integrationName;
+	String externalIdList;
+	String recordTypeName;
+	String payloadIN;
+	public String payloadOUT;
+	public String endpoint;
+	public Boolean hasAnyErrors;
+	public Boolean hasDeleted;
+
+	public IntegrationLog setIntegrationName(String integrationName){
+		this.integrationName = integrationName;
+		return this;
+	}
+
+	public IntegrationLog setExternalIdList(String externalIdList){
+		this.externalIdList = externalIdList;
+		return this;
+	}
+
+	public IntegrationLog setRecordTypeName(String recordTypeName){
+		this.recordTypeName = recordTypeName;
+		return this;
+	}
+
+	public IntegrationLog setPayloadIN(String payloadIN){
+		this.payloadIN = payloadIN;
+		return this;
+	}
+
+	public IntegrationLog setPayloadOUT(String payloadOUT){
+		this.payloadOUT = payloadOUT;
+		return this;
+	}
+
+	public IntegrationLog setEndpoint(String endpoint){
+		this.endpoint = endpoint;
+		return this;
+	}
+
+	public IntegrationLog setHasAnyErrors(Boolean hasAnyErrors){
+		this.hasAnyErrors = hasAnyErrors;
+		return this;
+	}
+
+	public IntegrationLog setHasDeleted(Boolean hasDeleted){
+		this.hasDeleted = hasDeleted;
+		return this;
+	}
+
+	public Id createLog(){
 		System.debug('');
 		// Se os dados forem maiores que 100.000 TRUE, se não FALSE
 		Boolean attachmentIN = (payloadIN.length() > 130000);
