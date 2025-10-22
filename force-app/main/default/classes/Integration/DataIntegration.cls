@@ -24,7 +24,5 @@ public with sharing class DataIntegration {
             this.sObjectType = sObjectType;
             return this;
         }
-        
-        
     }
 }

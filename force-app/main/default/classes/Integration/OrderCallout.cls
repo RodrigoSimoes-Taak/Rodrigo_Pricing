@@ -84,7 +84,7 @@ public with sharing class OrderCallout {
                 .setHasDeleted(false);
             System.debug('Teste3');
         }
-        String logId = calloutLog.createLog();
+        String logId = calloutLog.build();
         for (Order iOrder : relatedOrderList){
             iOrder.IntegrationLogOutbound__c = logId;
 

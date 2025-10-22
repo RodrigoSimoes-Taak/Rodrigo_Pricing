@@ -106,7 +106,7 @@ global with sharing class OrderIntegration {
                 .setHasDeleted(false)
                 .setPayloadOUT(errorMessage);
 
-            inboundLog.createLog();
+            inboundLog.build();
             RestContext.response.statusCode = 400;
 
             return responseMap;
@@ -184,8 +184,8 @@ global with sharing class OrderIntegration {
             inboundLog.setPayloadOUT(JSON.serialize(responseMap))
                 .setHasAnyErrors(hasAnyErrors)
                 .setHasDeleted(false);
-                
-            String logId = inboundLog.createLog();
+
+            String logId = inboundLog.build();
             List<Order> ordersToUpdate = new List<Order>();
             List<Order> ordersToDelete = new List<Order>();
             Map<String,Order> integratedOrders  = new Map<String,Order>();
@@ -224,7 +224,7 @@ global with sharing class OrderIntegration {
             inboundLog.setExternalIdList(externalIdList)
                 .setHasAnyErrors(true)
                 .setHasDeleted(false);
-            inboundLog.createLog();            
+            inboundLog.build();            
         }
         
         

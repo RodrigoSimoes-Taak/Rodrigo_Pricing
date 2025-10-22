@@ -7,7 +7,22 @@ public with sharing class IntegrationLog {
 	public String endpoint;
 	public Boolean hasAnyErrors;
 	public Boolean hasDeleted;
-
+    Boolean attachmentIN;
+    Boolean attachmentOUT;
+    Datetime datetimeNow;
+    Id recordTypeId;
+    public void reset(){
+        this.integrationName = '';
+        this.externalIdList = '';
+        this.recordTypeName = '';
+        this.payloadIN = '';
+        this.payloadOUT = '';
+        this.endpoint = '';
+        this.hasAnyErrors = false;
+        this.hasDeleted = false;
+        this.attachmentIN = false;
+        this.attachmentOUT = false;
+    }
 	public IntegrationLog setIntegrationName(String integrationName){
 		this.integrationName = integrationName;
 		return this;
@@ -47,31 +62,31 @@ public with sharing class IntegrationLog {
 		this.hasDeleted = hasDeleted;
 		return this;
 	}
+    public Id build(){
+        return createLog();
+    }
 
-	public Id createLog(){
-		System.debug('');
+	private Id createLog(){
+		//System.debug('');
 		// Se os dados forem maiores que 100.000 TRUE, se não FALSE
-		Boolean attachmentIN = (payloadIN.length() > 130000);
-		Boolean attachmentOUT = (payloadOUT.length() > 130000);
-		Datetime datetimeNow = System.now(); // Data Atual
+		attachmentIN = (payloadIN.length() > 130000);
+	    attachmentOUT = (payloadOUT.length() > 130000);
+		datetimeNow = System.now(); // Data Atual
 		// Pega Id do log de integração (IN ou OUT)
-		Id recordTypeId = Schema.SObjectType.IntegrationLog__c.getRecordTypeInfosByDeveloperName().containsKey(recordTypeName) ?
+		recordTypeId = Schema.SObjectType.IntegrationLog__c.getRecordTypeInfosByDeveloperName().containsKey(recordTypeName) ?
 							Schema.SObjectType.IntegrationLog__c.getRecordTypeInfosByName().get(recordTypeName).getRecordTypeId()
 							: null;
 
 		if (recordTypeId == null) System.debug('Falha ao pegar o recordTypeId do log de integração => ' + recordTypeId);
 
-		IntegrationLog__c log = createIntegrationLogRecord(
-			integrationName, externalIdList, recordTypeId, recordTypeName, attachmentIN, attachmentOUT, payloadIN, payloadOUT,
-			endpoint, hasAnyErrors, datetimeNow, hasDeleted
-		);
+		IntegrationLog__c log = createIntegrationLogRecord();
 
 		try { // Insere o log de integração e cria anexo se for necessario
 			insert log;
 
 			// Confere se é necessario criar anexo
-			if (attachmentIN) createAttachment(log.Id, integrationName, 'IN', log.Name, String.valueOf(datetimeNow), payloadIN);
-			if (attachmentOUT) createAttachment(log.Id, integrationName, 'OUT', log.Name, String.valueOf(datetimeNow), payloadOUT);
+			if (attachmentIN) createAttachment(log, 'IN', payloadIN);
+			if (attachmentOUT) createAttachment(log, 'OUT', payloadOUT);
 		}
 		catch (Exception error) {
 			System.debug('EXCEPTION ON LOG - Please review parameters - ' + error.getMessage() + ' - ' + error.getStackTraceString());
@@ -81,10 +96,8 @@ public with sharing class IntegrationLog {
 
 		return log.Id;
 	}
-
-	public static IntegrationLog__c createIntegrationLogRecord(String integrationName, String externalIdList, Id recordTypeId,
-									String recordTypeName, Boolean attachmentIN, Boolean attachmentOUT, String payloadIN,
-									String payloadOUT, String endpoint, Boolean hasAnyErrors, Datetime datetimeNow, Boolean hasDeleted) {
+    
+	private IntegrationLog__c createIntegrationLogRecord() {
 		return new IntegrationLog__c(
 			Name = integrationName + ' ' + recordTypeName,
 			Endpoint__c = endpoint,
@@ -100,12 +113,12 @@ public with sharing class IntegrationLog {
 		);
 	}
 
-	@TestVisible
-	private static Id createAttachment(String recordId, String integrationName, String inOrOut, String logName, String timeAsString, String payload){
+	
+	private Id createAttachment(IntegrationLog__c log, String inOrOut, String payload){
 		Attachment attachment = new Attachment(
-			Name = 'LOG-' + integrationName + '-' + inOrOut + '-' + timeAsString + '.txt',
+			Name = 'LOG-' + log.Name + '-' + inOrOut + '-' + String.valueOf(datetimeNow) + '.txt',
 			Body = Blob.valueOf(payload),
-			ParentId = recordId
+			ParentId = log.Id
 		);
 
 		insert attachment;
