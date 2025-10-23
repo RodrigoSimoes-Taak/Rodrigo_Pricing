@@ -92,7 +92,7 @@ global with sharing class OrderIntegration {
             inboundLog.setPayloadIN(JSON.serialize(ordersToIntegrate));
         }
         catch(Exception e){
-            String errorMessage = IntegrationUtils.catchJSONError(e);
+            String errorMessage = JSONErrorCatcher.catchJSONError(e);
             
             System.debug('Error on OrderIntegration: '+e.getStackTraceString()+e.getMessage()+':\n   '+RestContext.request.requestBody.toString());
 
@@ -135,7 +135,7 @@ global with sharing class OrderIntegration {
             List<Database.UpsertResult> orderUpsertResults = Database.upsert(newOrders,Order.ExternalId__c,false);
             Set<String> successfulOrderUpsertExternalIds = new Set<String>();
             for (Integer i = 0; i < orderUpsertResults.size(); i++){
-                String errorMessage = IntegrationUtils.getErrorMessage(orderUpsertResults[i]);
+                String errorMessage = DatabaseErrorHandler.getUpsertErrorMessage(orderUpsertResults[i]);
                 if (errorMessage != '' && !hasAnyErrors){
                     hasAnyErrors = true;
                 }
@@ -168,7 +168,7 @@ global with sharing class OrderIntegration {
             List<Database.UpsertResult> orderItemsUpsertResults = Database.upsert(newOrderItems,false);
             for (Integer i = 0;i < orderItemsUpsertResults.size();++i){ 
                 
-                String errorMessage = IntegrationUtils.getErrorMessage(orderItemsUpsertResults[i]);
+                String errorMessage = DatabaseErrorHandler.getUpsertErrorMessage(orderItemsUpsertResults[i]);
                 if (errorMessage != '' && !hasAnyErrors){
                     hasAnyErrors = true;
                 }

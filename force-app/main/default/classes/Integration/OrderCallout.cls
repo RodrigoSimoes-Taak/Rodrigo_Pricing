@@ -18,7 +18,7 @@ public with sharing class OrderCallout {
         System.debug(JSON.serialize(requestMap));
 
         String requestURL = 'callout:OrgLucas/services/apexrest/orders';
-        HttpResponse response = IntegrationUtils.sendRequest(requestMap,requestURL);
+        HttpResponse response = SendRequest.sendPOSTRequestJSONBody(requestMap,requestURL);
         
         IntegrationLog calloutLog = new IntegrationLog()
             .setEndpoint(requestURL)
@@ -30,7 +30,7 @@ public with sharing class OrderCallout {
         Boolean hasAnyError = false;
         String externalIdsFromResponse = '';
 
-        if (IntegrationUtils.isResponseOk(response)){
+        if (EvaluateResponseCode.isResponseOk(response)){
             
             System.debug(responseBody);
             try{
