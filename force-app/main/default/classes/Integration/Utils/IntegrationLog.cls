@@ -11,7 +11,7 @@ public with sharing class IntegrationLog {
     Boolean attachmentOUT;
     Datetime datetimeNow;
     Id recordTypeId;
-    public void reset(){
+    public IntegrationLog reset(){
         this.integrationName = '';
         this.externalIdList = '';
         this.recordTypeName = '';
@@ -22,6 +22,7 @@ public with sharing class IntegrationLog {
         this.hasDeleted = false;
         this.attachmentIN = false;
         this.attachmentOUT = false;
+        return this;
     }
 	public IntegrationLog setIntegrationName(String integrationName){
 		this.integrationName = integrationName;

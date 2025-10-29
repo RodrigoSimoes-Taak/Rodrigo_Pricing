@@ -8,4 +8,11 @@ public with sharing class SendRequest {
         HttpResponse response = new Http().send(request);
         return response;
     }
+    public static HttpResponse sendGETRequestEmptyBody(String requestURL){
+        HttpRequest request = new HttpRequest();
+        request.setEndpoint(requestURL);
+        request.setMethod('GET');
+        HttpResponse response = new Http().send(request);
+        return response;
+    }
 }
