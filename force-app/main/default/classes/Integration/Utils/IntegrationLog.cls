@@ -2,7 +2,7 @@ public with sharing class IntegrationLog {
 	String integrationName;
 	String externalIdList;
 	String recordTypeName;
-	String payloadIN;
+	public String payloadIN;
 	public String payloadOUT;
 	public String endpoint;
 	public Boolean hasAnyErrors;

@@ -25,4 +25,14 @@ public with sharing class DataIntegration {
             return this;
         }
     }
+    public class PokemonResponse{
+        public Integer count;
+        public String next;
+        public String previous;
+        public List<PokemonData> results;
+    }
+    public class PokemonData{
+        public String name;
+        public String url;
+    }
 }

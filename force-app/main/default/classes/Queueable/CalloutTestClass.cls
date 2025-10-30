@@ -1,9 +1,20 @@
 public with sharing class CalloutTestClass {
-    @future(callout=true)
-    public static void callout(){ 
-        //TODO: do one future callout to get the current number of pokémon, then run it in intervals of 20!
-        GetPokemonData newCallout = new GetPokemonData('https://pokeapi.co/api/v2/pokemon?limit=2000');
-        Id jobID = System.enqueueJob(newCallout);
+    @InvocableMethod
+    public static void enqueueCalloutToPokemonAPI(){ 
+
+        Integer calloutsPerEnqueue = Integer.valueOf(DevParameters__mdt.getInstance('NumberOfCalloutsPerEnqueue').Value__c);
+
+        AsyncOptions options = new AsyncOptions();
+        options.MaximumQueueableStackDepth =  Integer.valueOf(DevParameters__mdt.getInstance('QueueableMaxDepth').Value__c);
+
+        GetPokemonData newCallout = new GetPokemonData()
+            .setRequestURL(DevParameters__mdt.getInstance('PokemonURL').Value__c)
+            .setCalloutsPerEnqueue(calloutsPerEnqueue)
+            .build();
+        Id jobID = System.enqueueJob(newCallout,options);
         System.debug(jobID);
+        
+        
+        
     }
 }
