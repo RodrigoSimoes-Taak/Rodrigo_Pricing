@@ -1,4 +1,4 @@
-public with sharing class CalloutTestClass {
+public with sharing class PokemonDetails {
     @InvocableMethod
     public static void enqueueCalloutToPokemonAPI(){ 
 
