@@ -34,6 +34,9 @@ public with sharing class GetPokemonData implements Queueable, Database.AllowsCa
     
     public void execute(QueueableContext context) {
         System.debug('Depth Limits ('+System.AsyncInfo.hasMaxStackDepth()+'):'+System.AsyncInfo.getCurrentQueueableStackDepth()+'/'+System.AsyncInfo.getMaximumQueueableStackDepth());
+
+        if (calloutsPerEnqueue>Limits.getLimitCallouts()) calloutsPerEnqueue = Limits.getLimitCallouts();
+        
         for (Integer i=0; i<this.calloutsPerEnqueue;++i){
             System.debug('Callout Limits:'+Limits.getCallouts()+'/'+Limits.getLimitCallouts() );
              
