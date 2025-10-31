@@ -1,9 +1,23 @@
 {
-  "search.exclude": {
-    "**/node_modules": true,
-    "**/bower_components": true,
-    "**/.sfdx": true
-  },
-  "workbench.colorCustomizations": {},
-  "xml.preferences.showSchemaDocumentationType": "none"
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/bower_components": true,
+        "**/.sfdx": true
+    },
+    "workbench.colorCustomizations": {
+        "statusBar.background": "#99AEBB",
+        "statusBar.foreground": "#000000",
+        "statusBarItem.hoverBackground": "#8b8680",
+        "statusBarItem.activeBackground": "#8b8680",
+        "statusBar.border": "#99AEBB",
+        "activityBar.activeBackground": "#8b8680",
+        "activityBar.activeBorder": "#8b8680",
+        "activityBar.background": "#99AEBB",
+        "activityBar.foreground": "#000000",
+        "titleBar.activeBackground": "#99AEBB",
+        "titleBar.activeForeground": "#000000",
+        "titleBar.border": "#99AEBB",
+        "titleBar.inactiveBackground": "#99AEBB"
+    },
+    "xml.preferences.showSchemaDocumentationType": "none"
 }
