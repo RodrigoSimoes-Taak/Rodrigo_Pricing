@@ -177,9 +177,20 @@ public with sharing class TemplateDefaultFields {
             return new Map<String,Object>{
                 'Name'=>'Opportunity Test ' + String.valueOf(countSObjectCreated),
                 'CloseDate'=> Date.today().addYears(1),
-                'StageName' => 'Closed Won'
+                'StageName' => 'Closed Won',
+                'Pricebook2Id'=> TestFactorySObject.getInstance().getStandardPricebookId()
+
             };
         }
     }
+    public class OpportunityLineItemDefaults implements FieldDefaults{//finished
+        public Map<String,Object> getFieldDefaults(Decimal countSObjectCreated){
+            return new Map<String,Object>{
+                'Quantity'=>1,
+                'UnitPrice'=> 2.99
+            };
+        }
+    }
+    
     
 }
