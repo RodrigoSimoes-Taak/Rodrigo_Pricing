@@ -3,9 +3,9 @@ public with sharing class UpdateSellerGoals implements Database.Batchable<SObjec
         //TODO: Decide if LIMIT should be used, and the number!
         return Database.getQueryLocator( //gets all Goals from Every user, from this year
             'SELECT ActualEarnings__c,Seller__c, '+
-            '(SELECT Id, RecordTypeId, Product__c, ProductHierarchy__c, PaymentCondition__c, GoalValue__c, NegotiatedEarnings__c, '+
-            'ProjectedEarnings__c, ActualEarnings__c, GoalAmount__c, NegotiatedAmount__c, ActualAmount__c, ProjectedAmount__c, '+
-            'ReachedPercentage__c, CommissionPercentage__c FROM GoalItems__r) '+
+            '(SELECT Id, RecordTypeId, Product__c, ProductHierarchy__c, PaymentCondition__c, GoalValue__c, '+
+            'NegotiatedEarnings__c, ProjectedEarnings__c, ActualEarnings__c,ReachedPercentage__c, CommissionPercentage__c '+
+            'FROM GoalItems__r) '+
             'FROM Goal__c WHERE Year__c = '+Date.today().year()
             );
     }
@@ -23,14 +23,9 @@ public with sharing class UpdateSellerGoals implements Database.Batchable<SObjec
                 if (!relatedSellerGoalItemMap.containsKey(iGoal.Seller__c)){
                     relatedSellerGoalItemMap.put(iGoal.Seller__c,new List<GoalItem__c>());
                 }
-                iGoalItem.ProjectedAmount__c = 0;
-                iGoalItem.ProjectedEarnings__c = 0;
-                iGoalItem.NegotiatedAmount__c = 0;
-                iGoalItem.NegotiatedEarnings__c = 0;
-                iGoalItem.ActualAmount__c = 0;
-                iGoalItem.ActualEarnings__c = 0;
                 
-
+                iGoalItem = resetGoalItem(iGoalItem);
+                
                 relatedSellerGoalItemMap.get(iGoal.Seller__c).add(iGoalItem);
             }
 
@@ -44,18 +39,30 @@ public with sharing class UpdateSellerGoals implements Database.Batchable<SObjec
         
         for (Opportunity iOpp:sellerOppList){
             for (OpportunityLineItem iOppLineItem:iOpp.OpportunityLineItems){
-                for (GoalItem__c iGoalItem:relatedSellerGoalItemMap.get(iOpp.OwnerId)){
-                    if (iGoalItem.ProductHierarchy__c != null && iOppLineItem.Product2.ProductHierarchy__c == iGoalItem.ProductHierarchy__c){
-                        iGoalItem.ProjectedAmount__c += iOppLineItem.Quantity;
-                        
-                    }
-                    else if (iGoalItem.Product__c != null && iOppLineItem.Product2Id == iGoalItem.Product__c){
-                        iGoalItem.ProjectedAmount__c += iOppLineItem.Quantity;
-                    }
-                    else if (iGoalItem.GoalValue__c!= null){ //Means it's a performance goal
-                        iGoalItem.ProjectedEarnings__c += iOppLineItem.TotalPrice;
+                if (relatedSellerGoalItemMap.containsKey(iOpp.OwnerId)){
+                    for (GoalItem__c iGoalItem:relatedSellerGoalItemMap.get(iOpp.OwnerId)){
+
+                        if (!isGoalItemForPaymentCondition(iGoalItem)){ //opp doesn't have payment conditions
+
+                            if (isGoalItemForHierarchy(iGoalItem)){
+                                if (iOppLineItem.Product2.ProductHierarchy__c == iGoalItem.ProductHierarchy__c){
+                                    iGoalItem.ProjectedEarnings__c += iOppLineItem.TotalPrice;
+                                }
+                            }
+
+                            else if (isGoalItemForProduct(iGoalItem)){
+                                if (iOppLineItem.Product2Id == iGoalItem.Product__c){
+                                    iGoalItem.ProjectedEarnings__c += iOppLineItem.TotalPrice;
+                                }
+                            }
+
+                            else{ //Means it's a performance goal
+                                iGoalItem.ProjectedEarnings__c += iOppLineItem.TotalPrice;
+                            }
+                        }
                     }
                 }
+                
             }
         }
 
@@ -82,73 +89,88 @@ public with sharing class UpdateSellerGoals implements Database.Batchable<SObjec
                     relatedGoal.ActualEarnings__c += iOrder.OrderItemSum__c;
                     goalsToUpdateMap.put(relatedGoal.Id,relatedGoal);
                 }
-                
-                
-                
             }
+            
             for (OrderItem iOrderItem:iOrder.OrderItems){
-                for (GoalItem__c iGoalItem:relatedSellerGoalItemMap.get(iOrder.OwnerId)){
-                    if(iGoalItem.ProductHierarchy__c != null && iOrderItem.Product2.ProductHierarchy__c == iGoalItem.ProductHierarchy__c){
-                        if (orderApproved){
-                            iGoalItem.ActualAmount__c += iOrderItem.Quantity;
-                        }
-                        else{
-                            iGoalItem.NegotiatedAmount__c += iOrderItem.Quantity;
-                        }
-                    }
-                    else if (iGoalItem.Product__c != null && iOrderItem.Product2Id == iGoalItem.Product__c){
-                        if (orderApproved){
-                            iGoalItem.ActualAmount__c += iOrderItem.Quantity;
-                        }
-                        else{
-                            iGoalItem.NegotiatedAmount__c += iOrderItem.Quantity;
-                        }
-                    }
-                    else if (iGoalItem.PaymentCondition__c != null && iOrder.PaymentCondition__c == iGoalItem.PaymentCondition__c){
-                        if (addedPaymentCondition){
-                            continue;
-                        }
-                        addedPaymentCondition = true;
-                        if (orderApproved){
-                            iGoalItem.ActualAmount__c += 1;
-
-                        }
-                        else{
-                            iGoalItem.NegotiatedAmount__c +=1;
-                        }
-                    }
-                    else if (iGoalItem.GoalValue__c != null){
-                        if (orderApproved){
-                            iGoalItem.ActualEarnings__c += iOrderItem.FinalPriceWithDiscount__c;
+                if (relatedSellerGoalItemMap.containsKey(iOrder.OwnerId)){
+                    for (GoalItem__c iGoalItem:relatedSellerGoalItemMap.get(iOrder.OwnerId)){
+                        if (isGoalItemForHierarchy(iGoalItem)){
+                            
+                            if (iOrderItem.Product2.ProductHierarchy__c == iGoalItem.ProductHierarchy__c){
+                                if (orderApproved){
+                                    iGoalItem.ActualEarnings__c += iOrderItem.FinalPriceWithDiscount__c;
+                                }
+                                else{
+                                    iGoalItem.NegotiatedEarnings__c += iOrderItem.FinalPriceWithDiscount__c;
+                                }
+                                
+                            }
                             
                         }
-                        else{
-                            iGoalItem.NegotiatedEarnings__c += iOrderItem.FinalPriceWithDiscount__c;
+                        else if (isGoalItemForProduct(iGoalItem)){
+
+                            if (iOrderItem.Product2Id == iGoalItem.Product__c){
+
+                                if (orderApproved){
+                                    iGoalItem.ActualEarnings__c += iOrderItem.FinalPriceWithDiscount__c;
+                                }
+
+                                else{
+                                    iGoalItem.NegotiatedEarnings__c += iOrderItem.FinalPriceWithDiscount__c;
+                                }
+                            }
+
                         }
-                    }
+                        else if (isGoalItemForPaymentCondition(iGoalItem)){
+
+                            if (iOrder.PaymentCondition__c == iGoalItem.PaymentCondition__c && !addedPaymentCondition){
+                                addedPaymentCondition = true;
+                                if (orderApproved){
+                                    iGoalItem.ActualEarnings__c += iOrderItem.FinalPriceWithDiscount__c;
+
+                                }
+                                else{
+                                    iGoalItem.NegotiatedEarnings__c +=iOrderItem.FinalPriceWithDiscount__c;
+                                }
+                            }
+                            
+                        }
+                        else {
+                            if (orderApproved){
+                                iGoalItem.ActualEarnings__c += iOrderItem.FinalPriceWithDiscount__c;
+                                
+                            }
+                            else{
+                                iGoalItem.NegotiatedEarnings__c += iOrderItem.FinalPriceWithDiscount__c;
+                            }
+                        }
                     
+                    }
                 }
+                
             }
         }
 
+        updateGoalItemsInSF(relatedSellerGoalItemMap);
+
+        updateGoalsInSF(goalsToUpdateMap);
+    
         
         
         
-        
-        //if Opps == Closed Won -> ProjectedEarnings
-        //if Order.StatusCode != Activated -> NegotiatedEarnings
-        //if Order.StatusCode == Activated -> ActualEarnings
+    }
+    public void finish(Database.BatchableContext context){
+        // execute any post-processing operations
+    }
+    Boolean isOrderApproved(Order order){
+        return (order.StatusCode == 'Activated' || order.Status == 'Erro De Integração');
+    }
+    void updateGoalItemsInSF(Map<Id,List<GoalItem__c>> relatedSellerGoalItemMap){
         List<GoalItem__c> goalItemsToUpdate = new List<GoalItem__c>();
         for (Id iId: relatedSellerGoalItemMap.keySet()){
             for (GoalItem__c iGoalItem:relatedSellerGoalItemMap.get(iId)){
                 System.debug('Item de meta: '+iGoalItem);
-                if (iGoalItem.GoalValue__c == null  ){ //means it's not performance
-                    if (iGoalItem.ActualAmount__c>=iGoalItem.GoalAmount__c) {
-                        iGoalItem.ReachedPercentage__c = iGoalItem.CommissionPercentage__c;
-                    }
-                    
-                }
-                else if (iGoalItem.ActualEarnings__c>= iGoalItem.GoalValue__c){
+                if (iGoalItem.ActualEarnings__c>= iGoalItem.GoalValue__c){
                     
                     iGoalItem.ReachedPercentage__c = iGoalItem.CommissionPercentage__c;
                     
@@ -157,17 +179,28 @@ public with sharing class UpdateSellerGoals implements Database.Batchable<SObjec
             }
         }
         update goalItemsToUpdate;
+        
+    }
+    void updateGoalsInSF(Map<Id,Goal__c> goalsToUpdateMap){
         if (!goalsToUpdateMap.isEmpty()){
             System.debug('Updated goals: '+goalsToUpdateMap);
-           
             update (List<Goal__c>)goalsToUpdateMap.values();
         }
         
     }
-    public void finish(Database.BatchableContext context){
-        // execute any post-processing operations
+    Boolean isGoalItemForHierarchy(GoalItem__c iGoalItem){
+        return iGoalItem.ProductHierarchy__c != null;
     }
-    Boolean isOrderApproved(Order order){
-        return (order.StatusCode == 'Activated' || order.Status == 'Erro De Integração');
+    Boolean isGoalItemForProduct(GoalItem__c iGoalItem){
+        return iGoalItem.Product__c != null;
+    }
+    Boolean isGoalItemForPaymentCondition(GoalItem__c iGoalItem){
+        return iGoalItem.PaymentCondition__c != null;
+    }
+    GoalItem__c resetGoalItem(GoalItem__c iGoalItem){
+        iGoalItem.ProjectedEarnings__c = 0;
+        iGoalItem.NegotiatedEarnings__c = 0;
+        iGoalItem.ActualEarnings__c = 0;
+        return iGoalItem;
     }
 }
