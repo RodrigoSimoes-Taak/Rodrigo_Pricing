@@ -23,6 +23,7 @@
 private class UpdateSellerGoals_Test {
     @TestSetup
     static void makeData(){
+        
         TestFactorySObject testFactory = TestFactorySObject.getInstance();
         
         Id priceBookId = TestFactorySObject.getStandardPricebookId();
@@ -132,7 +133,7 @@ private class UpdateSellerGoals_Test {
 
         List<GoalItem__c> goalItemsToInsert = new List<GoalItem__c>();
         goalItemsToInsert.add(new GoalItem__c( //performance goalItem
-            Name = 'Performance',RecordTypeId= '012fj000002MaDN',Meta__c = goalsToInsert[0].Id,GoalValue__c = 5,CommissionPercentage__c=2));
+            Name = 'Performance',RecordTypeId= '012fj000002MaDN',Goal__c = goalsToInsert[0].Id,GoalValue__c = 5,CommissionPercentage__c=2));
         insert goalItemsToInsert;
 
 
